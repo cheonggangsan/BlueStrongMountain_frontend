@@ -1,9 +1,13 @@
 <script setup>
 import { ref, computed } from "vue";
+import { useRouter } from "vue-router";
 import ProblemSearch from "./ProblemSearch.vue";
 import BoardHeader from "./board/BoardHeader.vue";
 import SelectedProblemsPanel from "./board/SelectedProblemsPanel.vue";
 import { postBoard } from "../api/problemApi";
+import { addBoard } from "../data/boardStore";
+
+const router = useRouter();
 
 const title = ref("");
 const deadline = ref("");
@@ -70,6 +74,16 @@ async function handlePost() {
 
     const res = await postBoard(payload);
     postResult.value = res;
+
+    //TODO: integrate backend
+    addBoard({
+      id: res?.id || Date.now(),
+      title: payload.title,
+      deadline: payload.deadline,
+      problemsCount: payload.problems.length,
+    });
+
+    router.push({ name: "BoardList" });
   } catch (e) {
     console.error(e);
     postError.value = "서버 전송 중 오류가 발생했습니다.";

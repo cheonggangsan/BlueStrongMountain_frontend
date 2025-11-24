@@ -1,5 +1,4 @@
 import { createRouter, createWebHistory } from "vue-router";
-
 import BoardList from "../components/BoardList.vue";
 import ProblemBoard from "../components/ProblemBoard.vue";
 
