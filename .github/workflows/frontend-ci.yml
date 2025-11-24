@@ -1,0 +1,43 @@
+name: Frontend CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm" # npm 말고 yarn/pnpm 쓰면 여기 값만 바꾸면 됨
+
+      - name: Install dependencies
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
+
+      # ---- 정적 분석 (Lint) ----
+      # package.json 에 "lint" 스크립트가 있다고 가정 (ex: "lint": "eslint .")
+      - name: Run Lint
+        run: npm run lint
+
+      # ---- 테스트 (있다면) ----
+      # Vitest나 Jest 쓰면 "test" 또는 "test:unit" 스크립트 연결해 두고 사용
+      - name: Run Unit Tests
+        run: npm test
+
+      # ---- Vite 빌드 ----
+      - name: Build (Vite)
+        run: npm run build
