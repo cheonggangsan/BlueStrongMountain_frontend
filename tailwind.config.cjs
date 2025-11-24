@@ -9,7 +9,6 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        // ✅ 기본 sans 폰트를 Pretendard로
         sans: ['"Pretendard"', "system-ui", "sans-serif"],
       },
     },
