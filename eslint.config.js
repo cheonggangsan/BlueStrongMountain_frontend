@@ -1,7 +1,9 @@
 export default {
-  env: {
-    browser: true,
-    es2021: true,
+  languageOptions: {
+    globals: {
+      window: "readonly",
+      document: "readonly",
+    },
   },
   extends: ["eslint:recommended", "plugin:vue/vue3-recommended"],
   parserOptions: {
