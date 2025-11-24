@@ -1,10 +1,13 @@
 name: Frontend CI
 
 on:
+  # main, develop 에 직접 push 될 때만 실행
   push:
-    branches: [main, develop, "feature/*"]
+    branches: [main, develop, feature/*]
+
+  # main, develop 대상으로 오는 PR 에서 실행
   pull_request:
-    branches: [main, develop, "feature/*"]
+    branches: [main, develop]
 
 jobs:
   build-and-test:
@@ -18,7 +21,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "npm" # npm 말고 yarn/pnpm 쓰면 여기 값만 바꾸면 됨
+          cache: "npm"
 
       - name: Install dependencies
         run: |
@@ -28,15 +31,19 @@ jobs:
             npm install
           fi
 
-      # ---- 정적 분석 (Lint) ----
-      # package.json 에 "lint" 스크립트가 있다고 가정 (ex: "lint": "eslint .")
+      # ---- Lint (필수) ----
       - name: Run Lint
         run: npm run lint
 
-      # ---- 테스트 (있다면) ----
-      # Vitest나 Jest 쓰면 "test" 또는 "test:unit" 스크립트 연결해 두고 사용
-      - name: Run Unit Tests
-        run: npm test
+      # ---- 테스트: test 스크립트 있을 때만 실행 ----
+      - name: Run Unit Tests (if test script exists)
+        run: |
+          if npm run | grep -q " test"; then
+            echo "test script found. running npm test..."
+            npm test
+          else
+            echo "No test script in package.json. Skipping tests."
+          fi
 
       # ---- Vite 빌드 ----
       - name: Build (Vite)

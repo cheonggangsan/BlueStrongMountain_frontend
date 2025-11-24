@@ -1,26 +1,39 @@
-import eslintRecommended from "eslint-config-eslint";
+import js from "@eslint/js";
+import eslintPluginVue from "eslint-plugin-vue";
+import globals from "globals";
 
 export default [
   {
+    ignores: ["dist/**", "node_modules/**"],
+  },
+  js.configs.recommended,
+  ...eslintPluginVue.configs["flat/recommended"],
+  {
     languageOptions: {
+      sourceType: "module",
+      ecmaVersion: "latest",
       globals: {
-        window: "readonly",
-        document: "readonly",
-      },
-      parserOptions: {
-        ecmaVersion: "latest",
-        sourceType: "module",
+        ...globals.browser,
       },
     },
-    plugins: ["vue"],
     rules: {
-      ...eslintRecommended.rules,
-      "vue/valid-v-for": "error", // v-for 구문이 올바른지 여부
-      "vue/valid-v-bind": "error", // v-bind의 구문이 유효한지
-      "vue/no-unused-vars": "warn", // 사용하지 않는 변수 경고
-      "vue/require-v-for-key": "error", // v-for에 key 속성이 반드시 있어야 한다는 규칙
-      "vue/no-mutating-props": "error", // prop 값 수정 금지
-      "vue/valid-v-model": "error", // v-model의 유효성 검사
+      "vue/valid-v-for": "error",
+      "vue/valid-v-bind": "error",
+      "vue/no-unused-vars": "warn",
+      "vue/require-v-for-key": "error",
+      "vue/no-mutating-props": "error",
+      "vue/valid-v-model": "error",
+    },
+  },
+
+  {
+    files: ["*.config.*", "*.cjs"],
+    languageOptions: {
+      sourceType: "module",
+      ecmaVersion: "latest",
+      globals: {
+        ...globals.node,
+      },
     },
   },
 ];
