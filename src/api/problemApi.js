@@ -228,6 +228,10 @@ export async function searchWithConditions(params = {}) {
   const hasRange = minDiffRaw !== null || maxDiffRaw !== null;
   const hasSingleDifficulty = !hasRange && difficulty && difficulty !== "ALL";
 
+  //TODO: use for api connection
+  unsolvedOnly;
+  aiRecommend;
+
   return MOCK_PROBLEMS.filter((p) => {
     // ===== 난이도 필터 =====
     if (hasRange) {

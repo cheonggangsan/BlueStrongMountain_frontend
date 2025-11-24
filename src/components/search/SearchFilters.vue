@@ -322,7 +322,7 @@ function emitReset() {
           placeholder="예) 1409 (비워두면 번호 조건 없이 검색)"
           class="w-full rounded-lg border-gray-300 text-sm focus:border-yellow-400 focus:ring-yellow-400"
           @keyup.enter="emitSearch"
-        />
+        >
       </div>
 
       <!-- 난이도 / 최소 해결자 수 -->
@@ -334,7 +334,10 @@ function emitReset() {
           <!-- 난이도 범위 -->
           <div class="flex items-center gap-2">
             <!-- From -->
-            <div class="relative" ref="difficultyFromDropdownRef">
+            <div
+              ref="difficultyFromDropdownRef"
+              class="relative"
+            >
               <button
                 type="button"
                 class="inline-flex items-center justify-between min-w-[110px] px-3 py-2 rounded-lg border border-gray-300 bg-white text-xs text-gray-700 hover:border-yellow-400 focus:outline-none focus:ring-1 focus:ring-yellow-400"
@@ -374,7 +377,10 @@ function emitReset() {
             <span class="text-xs text-gray-400">~</span>
 
             <!-- To -->
-            <div class="relative" ref="difficultyToDropdownRef">
+            <div
+              ref="difficultyToDropdownRef"
+              class="relative"
+            >
               <button
                 type="button"
                 class="inline-flex items-center justify-between min-w-[110px] px-3 py-2 rounded-lg border border-gray-300 bg-white text-xs text-gray-700 hover:border-yellow-400 focus:outline-none focus:ring-1 focus:ring-yellow-400"
@@ -418,7 +424,7 @@ function emitReset() {
             placeholder="최소 해결자 수"
             class="w-32 rounded-lg border-gray-300 text-xs focus:border-yellow-400 focus:ring-yellow-400"
             @keyup.enter="emitSearch"
-          />
+          >
 
           <!-- 일반 모드에서만: 미해결만/모든 문제 -->
           <button
@@ -436,11 +442,11 @@ function emitReset() {
               <span
                 class="w-7 h-4 rounded-full transition-colors"
                 :class="unsolvedOnly ? 'bg-red-300' : 'bg-gray-300'"
-              ></span>
+              />
               <span
                 class="absolute w-3 h-3 rounded-full bg-white shadow transform transition-transform"
                 :class="unsolvedOnly ? 'translate-x-3' : 'translate-x-0'"
-              ></span>
+              />
             </span>
             <span>{{ unsolvedOnly ? "모든 문제" : "미해결만" }}</span>
           </button>
@@ -450,14 +456,17 @@ function emitReset() {
       <!-- 태그 선택 -->
       <div class="space-y-1">
         <label class="text-xs font-medium text-gray-600"> 태그 </label>
-        <div class="relative" ref="tagDropdownRef">
+        <div
+          ref="tagDropdownRef"
+          class="relative"
+        >
           <div
             class="flex items-center gap-2 rounded-lg border border-gray-300 bg-white text-xs px-2 py-2 min-h-[40px]"
           >
             <div
               class="flex flex-wrap items-center gap-1 flex-1 cursor-pointer focus-within:border-yellow-400 focus-within:ring-1 focus-within:ring-yellow-400"
-              @click="tagDropdownOpen = !tagDropdownOpen"
               tabindex="0"
+              @click="tagDropdownOpen = !tagDropdownOpen"
             >
               <span
                 v-if="selectedTags.length === 0"
@@ -512,7 +521,7 @@ function emitReset() {
                 placeholder="태그 검색 (예: DP, Greedy)"
                 class="flex-1 rounded-md border-gray-300 text-xs focus:border-yellow-400 focus:ring-yellow-400"
                 @keyup.enter="emitSearch"
-              />
+              >
             </div>
 
             <button
@@ -561,11 +570,11 @@ function emitReset() {
               <span
                 class="w-7 h-4 rounded-full transition-colors"
                 :class="randomMode ? 'bg-yellow-300' : 'bg-gray-300'"
-              ></span>
+              />
               <span
                 class="absolute w-3 h-3 rounded-full bg-white shadow transform transition-transform"
                 :class="randomMode ? 'translate-x-3' : 'translate-x-0'"
-              ></span>
+              />
             </span>
             <span>조건에 맞는 문제 중 랜덤 최대 5개</span>
           </button>
@@ -590,11 +599,11 @@ function emitReset() {
               <span
                 class="w-7 h-4 rounded-full transition-colors"
                 :class="aiRecommend ? 'bg-indigo-300' : 'bg-gray-300'"
-              ></span>
+              />
               <span
                 class="absolute w-3 h-3 rounded-full bg-white shadow transform transition-transform"
                 :class="aiRecommend ? 'translate-x-3' : 'translate-x-0'"
-              ></span>
+              />
             </span>
             <span>AI 추천</span>
           </button>
@@ -633,13 +642,22 @@ function emitReset() {
       class="mt-3 pt-2 border-t border-gray-100 flex items-center justify-between"
     >
       <div class="text-xs h-5 flex items-center">
-        <span v-if="props.error" class="text-red-500">
+        <span
+          v-if="props.error"
+          class="text-red-500"
+        >
           {{ props.error }}
         </span>
-        <span v-else-if="props.loading" class="text-gray-500">
+        <span
+          v-else-if="props.loading"
+          class="text-gray-500"
+        >
           검색 중...
         </span>
-        <span v-else class="text-gray-400">
+        <span
+          v-else
+          class="text-gray-400"
+        >
           검색 조건을 선택한 뒤 <b>검색</b> 버튼을 눌러주세요.
         </span>
       </div>

@@ -239,8 +239,7 @@ function onClickProblem(problem) {
             </span>
             <span
               v-if="
-                problem.reviewCount !== undefined &&
-                problem.reviewCount !== null
+                problem.reviewCount !== undefined && problem.reviewCount !== null
               "
               class="text-[11px] text-blue-600"
             >

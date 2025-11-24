@@ -40,7 +40,9 @@ function handleClearAll() {
     <!-- 헤더: 제목 + 전체 삭제 버튼 한 줄 -->
     <div class="flex items-start justify-between gap-2 mb-2">
       <div>
-        <div class="left-panel-title">선택된 문제</div>
+        <div class="left-panel-title">
+          선택된 문제
+        </div>
         <p class="text-xs text-gray-400">
           drag &amp; drop 으로 순서를 변경할 수 있어요.
         </p>
@@ -84,15 +86,18 @@ function handleClearAll() {
           <button
             type="button"
             class="problem-remove-btn"
-            @click.stop="emit('remove', problem.id)"
             aria-label="문제 제거"
+            @click.stop="emit('remove', problem.id)"
           >
             ✕
           </button>
         </div>
       </div>
 
-      <div v-if="problems.length === 0" class="problem-slot problem-slot-empty">
+      <div
+        v-if="problems.length === 0"
+        class="problem-slot problem-slot-empty"
+      >
         선택된 문제가 없습니다.
       </div>
     </div>
