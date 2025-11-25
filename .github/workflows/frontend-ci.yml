@@ -1,0 +1,50 @@
+name: Frontend CI
+
+on:
+  # main, develop 에 직접 push 될 때만 실행
+  push:
+    branches: [main, develop, feature/*]
+
+  # main, develop 대상으로 오는 PR 에서 실행
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
+
+      # ---- Lint (필수) ----
+      - name: Run Lint
+        run: npm run lint
+
+      # ---- 테스트: test 스크립트 있을 때만 실행 ----
+      - name: Run Unit Tests (if test script exists)
+        run: |
+          if npm run | grep -q " test"; then
+            echo "test script found. running npm test..."
+            npm test
+          else
+            echo "No test script in package.json. Skipping tests."
+          fi
+
+      # ---- Vite 빌드 ----
+      - name: Build (Vite)
+        run: npm run build
