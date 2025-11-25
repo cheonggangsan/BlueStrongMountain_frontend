@@ -1,13 +1,14 @@
 <script setup>
 import { ref, computed } from "vue";
-import { useRouter } from "vue-router";
+import { useRouter, useRoute } from "vue-router";
 import ProblemSearch from "./ProblemSearch.vue";
 import BoardHeader from "./board/BoardHeader.vue";
 import SelectedProblemsPanel from "./board/SelectedProblemsPanel.vue";
 import { postBoard } from "../api/problemApi";
-import { addBoard } from "../data/boardStore";
+import { addBoard, fetchBoards } from "../data/boardStore";
 
 const router = useRouter();
+const route = useRoute();
 
 const title = ref("");
 const deadline = ref("");
@@ -83,6 +84,10 @@ async function handlePost() {
       problemsCount: payload.problems.length,
     });
 
+    const groupId = route.params.groupId || 1;
+
+    await fetchBoards(groupId);
+    
     router.push({ name: "BoardList" });
   } catch (e) {
     console.error(e);
