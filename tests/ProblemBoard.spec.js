@@ -1,43 +1,102 @@
-import { mount } from '@vue/test-utils'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import ProblemBoard from '../src/components/ProblemBoard.vue'
-import * as api from '../src/api/problemApi'
+// tests/ProblemBoard.spec.js
+import { mount } from "@vue/test-utils";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { nextTick } from "vue";
+import ProblemBoard from "../src/components/ProblemBoard.vue";
+import * as api from "../src/api/problemApi";
 
-describe('ProblemBoard.vue', () => {
+// 1) vue-router mock
+vi.mock("vue-router", () => ({
+  useRouter: () => ({
+    push: vi.fn(), // 나중에 원하면 push 호출 여부도 검증 가능
+  }),
+  useRoute: () => ({
+    params: {}, // create 모드라 boardId 없음
+  }),
+}));
+
+// 2) boardStore mock (addBoard, fetchBoards 등)
+vi.mock("../src/data/boardStore", () => ({
+  addBoard: vi.fn(),
+  updateBoard: vi.fn(),
+  fetchBoards: vi.fn(),
+  fetchBoardById: vi.fn(),
+}));
+
+describe("ProblemBoard.vue", () => {
   beforeEach(() => {
-    vi.restoreAllMocks()
-  })
+    vi.restoreAllMocks();
+  });
 
-  it('게시 버튼 클릭시 postBoard 를 올바른 payload로 호출한다', async () => {
-    const mockPost = vi.spyOn(api, 'postBoard').mockResolvedValue({ success: true })
+  it("게시 버튼 클릭 시 postBoard 를 올바른 payload 로 호출한다", async () => {
+    // postBoard 모킹
+    const mockPost = vi
+      .spyOn(api, "postBoard")
+      .mockResolvedValue({ id: 999, success: true });
 
-    const wrapper = mount(ProblemBoard)
+    const wrapper = mount(ProblemBoard, {
+      global: {
+        // 3) 자식 컴포넌트들은 stub 으로 단순화
+        stubs: {
+          ProblemSearch: {
+            template: "<div />",
+          },
+          SelectedProblemsPanel: {
+            template: "<div />",
+            props: ["problems"],
+          },
+          // BoardHeader 는 submit 이벤트만 내보내는 버튼으로 대체
+          BoardHeader: {
+            template: `
+              <div>
+                <button data-test="submit" @click="$emit('submit')">
+                  게시
+                </button>
+              </div>
+            `,
+            props: ["title", "deadline", "canPost", "isPosting", "buttonText"],
+          },
+        },
+      },
+    });
 
-    // 제목 입력
-    const titleInput = wrapper.find('input[type="text"]')
-    await titleInput.setValue('테스트 세션')
+    const vm = wrapper.vm;
 
-    // selectedProblems 에 직접 접근해서 문제 두 개 추가
-    await wrapper.setData({
-      // setData 는 Options API 용이라서 Composition API 에서는 작동하지 않을 수 있으므로
-      // 대신 vm 을 통해 수동으로 조작합니다.
-    })
+    // 4) 제목, 선택된 문제를 직접 주입 (Composition API 이므로 vm 사용)
+    vm.title = "테스트 세션";
+    vm.selectedProblems.push(
+      {
+        id: 1,
+        title: "A",
+        difficulty: "Gold 5",
+        tags: [],
+        acceptedUserCount: 1,
+      },
+      {
+        id: 2,
+        title: "B",
+        difficulty: "Gold 4",
+        tags: [],
+        acceptedUserCount: 1,
+      }
+    );
 
-    const vm = wrapper.vm
-    vm.selectedProblems.push({ id: 1, title: 'A', difficulty: 'Gold 5', tags: [], acceptedUserCount: 1 })
-    vm.selectedProblems.push({ id: 2, title: 'B', difficulty: 'Gold 4', tags: [], acceptedUserCount: 1 })
+    await nextTick(); // canPost 등 계산 반영
 
-    await wrapper.vm.$nextTick()
+    // 5) BoardHeader stub 의 submit 버튼 클릭 → ProblemBoard 의 handleSubmit → handlePost 실행
+    const submitButton = wrapper.get('[data-test="submit"]');
+    await submitButton.trigger("click");
+    await nextTick();
 
-    const postButton = wrapper.find('button')
-    await postButton.trigger('click')
+    // 6) postBoard 호출 검증
+    expect(mockPost).toHaveBeenCalledTimes(1);
 
-    expect(mockPost).toHaveBeenCalledTimes(1)
-    const payload = mockPost.mock.calls[0][0]
-    expect(payload.title).toBe('테스트 세션')
+    const payload = mockPost.mock.calls[0][0];
+    expect(payload.title).toBe("테스트 세션");
+    expect(payload.deadline).toBeNull(); // deadline 안 넣었으니 null
     expect(payload.problems).toEqual([
       { id: 1, order: 1 },
-      { id: 2, order: 2 }
-    ])
-  })
-})
+      { id: 2, order: 2 },
+    ]);
+  });
+});

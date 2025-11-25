@@ -10,7 +10,7 @@ import { addBoard, updateBoard, fetchBoards, fetchBoardById } from "../data/boar
 const router = useRouter();
 const route = useRoute();
 
-const boardId = computed(() => route.params.boardId);
+const boardId = computed(() => route?.params?.boardId ?? null);
 const isEditMode = computed(() => !!boardId.value);
 
 const title = ref("");
