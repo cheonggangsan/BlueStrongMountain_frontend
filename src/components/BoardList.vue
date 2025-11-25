@@ -214,6 +214,7 @@ async function handleDelete(id) {
           class="flex items-center space-x-2 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity"
         >
           <button
+            v-if="!isExpired(board.deadline)"
             class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-2 focus:ring-offset-2 focus:ring-gray-200"
             @click.stop="goEditBoard(board.id)"
           >
