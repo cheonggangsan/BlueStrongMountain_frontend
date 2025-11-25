@@ -13,6 +13,11 @@ const routes = [
     name: "BoardCreate",
     component: ProblemBoard,
   },
+  {
+    path: '/groups/:groupId/boards/:boardId/edit',
+    name: 'BoardEdit',
+    component: ProblemBoard,
+  },
 ];
 
 const router = createRouter({

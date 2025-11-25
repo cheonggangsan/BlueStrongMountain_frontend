@@ -54,8 +54,20 @@ function goCreateBoard() {
 }
 
 function goEditBoard(id) {
-  // 수정 페이지로 이동 (라우터 설정에 따라 params 변경 필요)
-  router.push({ name: "BoardEdit", params: { id } });
+  // 1. 현재 라우트의 파라미터에서 groupId를 가져옵니다.
+  //    (onMounted에서 사용했던 로직과 동일)
+  const groupId = route.params.groupId || 1; 
+
+  // 2. router.push를 호출할 때 두 개의 파라미터를 모두 전달합니다.
+  router.push({ 
+    name: "BoardEdit", 
+    params: { 
+      // 🚨 라우터 설정에서 정의한 파라미터 이름(:groupId)과 동일하게 키를 사용합니다.
+      groupId: groupId, 
+      // 🚨 라우터 설정에서 정의한 파라미터 이름(:id)과 동일하게 키를 사용합니다.
+      boardId: id            
+    } 
+  });
 }
 
 async function handleDelete(id) {
