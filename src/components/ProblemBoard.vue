@@ -45,7 +45,7 @@ onMounted(async () => {
 
 // 선택된 문제 id (검색 결과에서 숨기기용)
 const selectedProblemIds = computed(() =>
-  selectedProblems.value.map((p) => p.id)
+  selectedProblems.value.map((p) => p.id),
 );
 
 // 문제 추가 (중복 방지)
@@ -57,7 +57,7 @@ function handleAddProblem(problem) {
 // 문제 제거
 function handleRemoveProblem(problemId) {
   selectedProblems.value = selectedProblems.value.filter(
-    (p) => p.id !== problemId
+    (p) => p.id !== problemId,
   );
 }
 
@@ -78,7 +78,7 @@ function handleClearAllProblems() {
 }
 
 const canPost = computed(
-  () => title.value.trim().length > 0 && selectedProblems.value.length > 0
+  () => title.value.trim().length > 0 && selectedProblems.value.length > 0,
 );
 
 const isPosting = ref(false);
@@ -156,7 +156,7 @@ async function handleUpdate() {
       id: boardId.value,
       title: apiPayload.title,
       deadline: apiPayload.deadline,
-      problems: [...selectedProblems.value], // ✅ title 포함한 전체 객체
+      problems: [...selectedProblems.value],
     });
 
     // 3. 목록 데이터 갱신

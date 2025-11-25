@@ -14,8 +14,8 @@ const routes = [
     component: ProblemBoard,
   },
   {
-    path: '/groups/:groupId/boards/:boardId/edit',
-    name: 'BoardEdit',
+    path: "/groups/:groupId/boards/:boardId/edit",
+    name: "BoardEdit",
     component: ProblemBoard,
   },
 ];

@@ -78,7 +78,7 @@ describe("ProblemBoard.vue", () => {
         difficulty: "Gold 4",
         tags: [],
         acceptedUserCount: 1,
-      }
+      },
     );
 
     await nextTick(); // canPost 등 계산 반영

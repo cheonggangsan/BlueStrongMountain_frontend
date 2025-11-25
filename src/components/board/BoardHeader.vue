@@ -66,7 +66,7 @@ function handleSubmit() {
         type="text"
         placeholder="이번 스터디 세션 제목을 입력하세요"
         class="w-full rounded-lg border-gray-300 focus:border-yellow-400 focus:ring-yellow-400"
-      >
+      />
     </div>
 
     <!-- 마감 기한 -->
@@ -107,7 +107,7 @@ function handleSubmit() {
           type="datetime-local"
           class="absolute inset-0 w-full h-full opacity-0 pointer-events-none"
           tabindex="-1"
-        >
+        />
       </div>
     </div>
 

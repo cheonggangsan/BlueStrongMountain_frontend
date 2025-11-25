@@ -19,7 +19,7 @@ onMounted(async () => {
 const searchedBoards = computed(() => {
   if (!searchQuery.value) return boards.value;
   return boards.value.filter((board) =>
-    board.title.toLowerCase().includes(searchQuery.value.toLowerCase())
+    board.title.toLowerCase().includes(searchQuery.value.toLowerCase()),
   );
 });
 
@@ -56,39 +56,40 @@ function goCreateBoard() {
 function goEditBoard(id) {
   // 1. 현재 라우트의 파라미터에서 groupId를 가져옵니다.
   //    (onMounted에서 사용했던 로직과 동일)
-  const groupId = route.params.groupId || 1; 
+  const groupId = route.params.groupId || 1;
 
   // 2. router.push를 호출할 때 두 개의 파라미터를 모두 전달합니다.
-  router.push({ 
-    name: "BoardEdit", 
-    params: { 
+  router.push({
+    name: "BoardEdit",
+    params: {
       // 🚨 라우터 설정에서 정의한 파라미터 이름(:groupId)과 동일하게 키를 사용합니다.
-      groupId: groupId, 
+      groupId: groupId,
       // 🚨 라우터 설정에서 정의한 파라미터 이름(:id)과 동일하게 키를 사용합니다.
-      boardId: id            
-    } 
+      boardId: id,
+    },
   });
 }
 
 async function handleDelete(id) {
   if (confirm("정말 이 보드를 삭제하시겠습니까?")) {
     // 1. DELETE API 호출 (Mocking)
-    deleteBoard(id); 
-    
+    deleteBoard(id);
+
     // 2. GET API 호출 (업데이트된 전체 목록을 다시 가져옴)
     // 🚨 여기서 groupId가 필요합니다. onMounted에서 가져온 groupId를 사용하거나 상태로 저장해야 합니다.
-    const groupId = route.params.groupId || 1; 
+    const groupId = route.params.groupId || 1;
     await fetchBoards(groupId);
   }
 }
-
 </script>
 
 <template>
   <div class="p-4 max-w-3xl mx-auto">
     <div class="flex flex-col sm:flex-row justify-between gap-3 mb-6">
       <div class="relative flex-1">
-        <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+        <div
+          class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none"
+        >
           <svg
             class="w-4 h-4 text-gray-500"
             xmlns="http://www.w3.org/2000/svg"
@@ -110,7 +111,7 @@ async function handleDelete(id) {
           type="text"
           class="block w-full p-2.5 pl-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-yellow-500 focus:border-yellow-500"
           placeholder="보드 제목 검색..."
-        >
+        />
       </div>
 
       <button
@@ -167,12 +168,12 @@ async function handleDelete(id) {
       v-if="currentDisplayBoards.length === 0"
       class="py-10 text-center text-gray-500 bg-gray-50 rounded-lg border border-dashed border-gray-300"
     >
-      <p v-if="searchQuery">
-        검색 결과가 없습니다.
-      </p>
+      <p v-if="searchQuery">검색 결과가 없습니다.</p>
       <p v-else>
         {{
-          currentTab === "active" ? "진행 중인 보드가 없습니다." : "기간이 지난 보드가 없습니다."
+          currentTab === "active"
+            ? "진행 중인 보드가 없습니다."
+            : "기간이 지난 보드가 없습니다."
         }}
       </p>
     </div>
@@ -194,12 +195,16 @@ async function handleDelete(id) {
             <span
               class="px-2 py-0.5 rounded"
               :class="
-                currentTab === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                currentTab === 'active'
+                  ? 'bg-green-100 text-green-800'
+                  : 'bg-red-100 text-red-800'
               "
             >
               {{ currentTab === "active" ? "진행중" : "마감됨" }}
             </span>
-            <span> 마감: {{ board.deadline ? board.deadline : "설정 안 함" }} </span>
+            <span>
+              마감: {{ board.deadline ? board.deadline : "설정 안 함" }}
+            </span>
             <span>·</span>
             <span>문제 {{ board.problemsCount || 0 }}개</span>
           </div>
