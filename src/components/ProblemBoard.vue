@@ -5,7 +5,12 @@ import ProblemSearch from "./ProblemSearch.vue";
 import BoardHeader from "./board/BoardHeader.vue";
 import SelectedProblemsPanel from "./board/SelectedProblemsPanel.vue";
 import { postBoard } from "../api/problemApi";
-import { addBoard, updateBoard, fetchBoards, fetchBoardById } from "../data/boardStore";
+import {
+  addBoard,
+  updateBoard,
+  fetchBoards,
+  fetchBoardById,
+} from "../data/boardStore";
 
 const router = useRouter();
 const route = useRoute();
@@ -18,25 +23,24 @@ const deadline = ref("");
 const selectedProblems = ref([]);
 
 onMounted(async () => {
-    if (isEditMode.value) {
-        try {
-            // 보드 ID를 이용해 Store에서 기존 데이터를 가져옵니다.
-            const existingBoard = await fetchBoardById(boardId.value);
-            
-            // 폼 필드 초기화
-            title.value = existingBoard.title;
-            deadline.value = existingBoard.deadline || ""; // null 방지
-            
-            // 문제 목록 초기화 (문제 상세 데이터 구조가 필요합니다.)
-            // Mock DB에 문제 배열이 있다고 가정해야 합니다. (이 부분은 Mock DB 구조에 따라 다름)
-            // 여기서는 임시로 문제를 로드하는 과정만 표시합니다.
-            selectedProblems.value = existingBoard.problems || [];
-            
-        } catch (e) {
-            console.error("보드 데이터 로드 실패:", e);
-            // 에러 처리: 목록으로 돌아가거나 에러 메시지 표시
-        }
+  if (isEditMode.value) {
+    try {
+      // 보드 ID를 이용해 Store에서 기존 데이터를 가져옵니다.
+      const existingBoard = await fetchBoardById(boardId.value);
+
+      // 폼 필드 초기화
+      title.value = existingBoard.title;
+      deadline.value = existingBoard.deadline || ""; // null 방지
+
+      // 문제 목록 초기화 (문제 상세 데이터 구조가 필요합니다.)
+      // Mock DB에 문제 배열이 있다고 가정해야 합니다. (이 부분은 Mock DB 구조에 따라 다름)
+      // 여기서는 임시로 문제를 로드하는 과정만 표시합니다.
+      selectedProblems.value = existingBoard.problems || [];
+    } catch (e) {
+      console.error("보드 데이터 로드 실패:", e);
+      // 에러 처리: 목록으로 돌아가거나 에러 메시지 표시
     }
+  }
 });
 
 // 선택된 문제 id (검색 결과에서 숨기기용)
@@ -114,7 +118,7 @@ async function handlePost() {
     const groupId = route.params.groupId || 1;
 
     await fetchBoards(groupId);
-    
+
     router.push({ name: "BoardList" });
   } catch (e) {
     console.error(e);
@@ -125,49 +129,56 @@ async function handlePost() {
 }
 
 async function handleUpdate() {
-    if (!canPost.value || isPosting.value) return;
+  if (!canPost.value || isPosting.value) return;
 
-    isPosting.value = true;
-    postError.value = "";
+  isPosting.value = true;
+  postError.value = "";
 
-    try {
-        const payload = {
-            id: boardId.value, // 수정 모드는 ID가 필수입니다.
-            title: title.value.trim(),
-            deadline: deadline.value || null,
-            problems: selectedProblems.value.map((p, index) => ({
-                id: p.id,
-                order: index + 1,
-            })),
-        };
+  try {
+    // 1) 백엔드로 보낼 payload (문제는 id + order만)
+    //    - 실제 백엔드에는 보통 문제 전체 객체를 안 넣고
+    //      { problemId, order } 만 보관한다.
+    const apiPayload = {
+      id: boardId.value,
+      title: title.value.trim(),
+      deadline: deadline.value || null,
+      problems: selectedProblems.value.map((p, index) => ({
+        id: p.id,
+        order: index + 1,
+      })),
+    };
 
-        // 🚨 1. API 호출 (실제 백엔드라면 putBoard 사용)
-        // const res = await putBoard(boardId.value, payload); 
+    // 실제라면 여기서 PUT 요청
+    // await putBoard(boardId.value, apiPayload);
 
-        // 🚨 2. Mock DB에 수정 반영 (PUT 역할)
-        updateBoard(payload); 
+    // 2) Mock DB에는 "문제 전체 객체"를 그대로 저장
+    updateBoard({
+      id: boardId.value,
+      title: apiPayload.title,
+      deadline: apiPayload.deadline,
+      problems: [...selectedProblems.value], // ✅ title 포함한 전체 객체
+    });
 
-        // 3. 목록 데이터 갱신
-        const groupId = route.params.groupId || 1;
-        await fetchBoards(groupId);
-        
-        // 4. 목록 페이지로 이동
-        router.push({ name: "BoardList" }); 
-        
-    } catch (e) {
-        console.error(e);
-        postError.value = "서버 전송 중 오류가 발생했습니다.";
-    } finally {
-        isPosting.value = false;
-    }
+    // 3. 목록 데이터 갱신
+    const groupId = route.params.groupId || 1;
+    await fetchBoards(groupId);
+
+    // 4. 목록 페이지로 이동
+    router.push({ name: "BoardList" });
+  } catch (e) {
+    console.error(e);
+    postError.value = "서버 전송 중 오류가 발생했습니다.";
+  } finally {
+    isPosting.value = false;
+  }
 }
 
 async function handleSubmit() {
-    if (isEditMode.value) {
-        await handleUpdate();
-    } else {
-        await handlePost();
-    }
+  if (isEditMode.value) {
+    await handleUpdate();
+  } else {
+    await handlePost();
+  }
 }
 </script>
 
