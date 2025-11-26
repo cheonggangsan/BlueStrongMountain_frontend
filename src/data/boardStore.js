@@ -14,17 +14,17 @@ const getDateStr = (diffDays) => {
 const MOCK_DB_DATA_WITH_PROBLEMS = [
   {
     id: 1,
+    groupId: 1,
     title: "Vue.js 프론트엔드 뽀개기",
     deadline: getDateStr(7),
-    // MOCK_PROBLEMS에서 3개 문제의 상세 정보를 할당
     problems: [MOCK_PROBLEMS[0], MOCK_PROBLEMS[1], MOCK_PROBLEMS[2]],
-    problemsCount: 3, // problems 배열의 길이와 일치
+    problemsCount: 3,
   },
   {
     id: 2,
+    groupId: 1,
     title: "알고리즘 코딩테스트 대비반",
     deadline: getDateStr(30),
-    // MOCK_PROBLEMS에서 4개 문제의 상세 정보를 할당
     problems: [
       MOCK_PROBLEMS[3],
       MOCK_PROBLEMS[4],
@@ -35,6 +35,7 @@ const MOCK_DB_DATA_WITH_PROBLEMS = [
   },
   {
     id: 3,
+    groupId: 2,
     title: "자유 주제 아이디어 보드",
     deadline: null,
     problems: [MOCK_PROBLEMS[7], MOCK_PROBLEMS[8], MOCK_PROBLEMS[9]],
@@ -42,6 +43,7 @@ const MOCK_DB_DATA_WITH_PROBLEMS = [
   },
   {
     id: 4,
+    groupId: 2,
     title: "2023년 상반기 회고",
     deadline: getDateStr(-100),
     problems: [MOCK_PROBLEMS[10], MOCK_PROBLEMS[11]],
@@ -49,6 +51,7 @@ const MOCK_DB_DATA_WITH_PROBLEMS = [
   },
   {
     id: 5,
+    groupId: 3,
     title: "지난주 CS 스터디 (네트워크)",
     deadline: getDateStr(-3),
     problems: [MOCK_PROBLEMS[12]],
@@ -56,6 +59,7 @@ const MOCK_DB_DATA_WITH_PROBLEMS = [
   },
   {
     id: 6,
+    groupId: 3,
     title: "사내 해커톤 프로젝트",
     deadline: getDateStr(1),
     problems: [],
@@ -63,6 +67,7 @@ const MOCK_DB_DATA_WITH_PROBLEMS = [
   },
   {
     id: 7,
+    groupId: 1,
     title: "리액트 vs 뷰 비교 분석",
     deadline: getDateStr(-1),
     problems: [MOCK_PROBLEMS[13], MOCK_PROBLEMS[14]],
@@ -83,11 +88,12 @@ export async function fetchBoards(groupId) {
   // const response = await axios.get(`/api/v1/groups/${groupId}/`);
   // boards.value = response.data;
 
+  const numericGroupId = Number(groupId);
   // [Mocking] 0.5초 뒤에 데이터를 받아온 척 합니다.
   return new Promise((resolve) => {
     setTimeout(() => {
-      console.log(`[API Mock] 그룹 ID ${groupId}의 보드 목록 조회 성공`);
-      boards.value = [...LOCAL_DB.value]; // 데이터를 Store에 채움
+      console.log(`[API Mock] 그룹 ID ${numericGroupId}의 보드 목록 조회 성공`);
+      boards.value = LOCAL_DB.value.filter((b) => b.groupId === numericGroupId);
       resolve(boards.value);
     }, 500); // 0.5초 딜레이
   });
@@ -119,7 +125,6 @@ export function updateBoard(updatedBoard) {
     LOCAL_DB.value[index] = {
       ...LOCAL_DB.value[index],
       ...updatedBoard,
-      // 🚨 problemsCount 갱신
       problemsCount: updatedBoard.problems ? updatedBoard.problems.length : 0,
     };
     console.log(`[Mock DB] 보드 ID ${updatedBoard.id} 수정 완료.`);
@@ -135,8 +140,7 @@ export function updateBoard(updatedBoard) {
  * 특정 보드의 상세 정보를 가져옵니다. (Mocking)
  */
 export async function fetchBoardById(id) {
-  // 실제 DB 역할을 하는 LOCAL_DB에서 해당 ID를 찾습니다.
-  const board = LOCAL_DB.value.find((b) => b.id == id); // == 비교는 ID가 숫자/문자 혼용될 경우를 대비
+  const board = LOCAL_DB.value.find((b) => b.id == id);
 
   return new Promise((resolve, reject) => {
     setTimeout(() => {

@@ -11,7 +11,7 @@ const currentTab = ref("active"); // 'active' (진행중) | 'past' (종료)
 
 onMounted(async () => {
   // 라우터 설정이 { path: '/groups/:groupId', ... } 라고 가정
-  const groupId = route.params.groupId || 1; // 파라미터가 없으면 임시로 1번 그룹이라고 가정
+  const groupId = route.params.groupId;
   await fetchBoards(groupId);
 });
 
@@ -50,21 +50,17 @@ const currentDisplayBoards = computed(() => {
 // --- Actions ---
 
 function goCreateBoard() {
-  router.push({ name: "BoardCreate" });
+  router.push({
+    name: "BoardCreate",
+    params: { groupId: route.params.groupId },
+  });
 }
 
 function goEditBoard(id) {
-  // 1. 현재 라우트의 파라미터에서 groupId를 가져옵니다.
-  //    (onMounted에서 사용했던 로직과 동일)
-  const groupId = route.params.groupId || 1;
-
-  // 2. router.push를 호출할 때 두 개의 파라미터를 모두 전달합니다.
   router.push({
     name: "BoardEdit",
     params: {
-      // 🚨 라우터 설정에서 정의한 파라미터 이름(:groupId)과 동일하게 키를 사용합니다.
-      groupId: groupId,
-      // 🚨 라우터 설정에서 정의한 파라미터 이름(:id)과 동일하게 키를 사용합니다.
+      groupId: route.params.groupId,
       boardId: id,
     },
   });
@@ -72,13 +68,8 @@ function goEditBoard(id) {
 
 async function handleDelete(id) {
   if (confirm("정말 이 보드를 삭제하시겠습니까?")) {
-    // 1. DELETE API 호출 (Mocking)
     deleteBoard(id);
-
-    // 2. GET API 호출 (업데이트된 전체 목록을 다시 가져옴)
-    // 🚨 여기서 groupId가 필요합니다. onMounted에서 가져온 groupId를 사용하거나 상태로 저장해야 합니다.
-    const groupId = route.params.groupId || 1;
-    await fetchBoards(groupId);
+    await fetchBoards(route.params.groupId);
   }
 }
 </script>
