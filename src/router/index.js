@@ -9,7 +9,7 @@ const routes = [
     component: BoardList,
   },
   {
-    path: "/boards/create",
+    path: "/groups/:groupId/boards/new",
     name: "BoardCreate",
     component: ProblemBoard,
   },

@@ -50,7 +50,12 @@ const currentDisplayBoards = computed(() => {
 // --- Actions ---
 
 function goCreateBoard() {
-  router.push({ name: "BoardCreate" });
+  const groupId = route.params.groupId || 1;
+
+  router.push({
+    name: "BoardCreate",
+    params: { groupId: groupId },
+  });
 }
 
 function goEditBoard(id) {
