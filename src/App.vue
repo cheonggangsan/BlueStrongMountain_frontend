@@ -1,7 +1,5 @@
-<script setup>
-import ProblemBoard from "./components/ProblemBoard.vue";
-</script>
+<script setup></script>
 
 <template>
-  <ProblemBoard />
+  <router-view />
 </template>

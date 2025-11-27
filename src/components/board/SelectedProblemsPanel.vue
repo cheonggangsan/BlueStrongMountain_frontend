@@ -40,9 +40,7 @@ function handleClearAll() {
     <!-- 헤더: 제목 + 전체 삭제 버튼 한 줄 -->
     <div class="flex items-start justify-between gap-2 mb-2">
       <div>
-        <div class="left-panel-title">
-          선택된 문제
-        </div>
+        <div class="left-panel-title">선택된 문제</div>
         <p class="text-xs text-gray-400">
           drag &amp; drop 으로 순서를 변경할 수 있어요.
         </p>

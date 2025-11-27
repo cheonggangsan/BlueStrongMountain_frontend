@@ -75,7 +75,7 @@ const filteredTags = computed(() => {
     return tags.filter(
       (tag) =>
         tag.label.toLowerCase().includes(searchLower) ||
-        tag.value.toLowerCase().includes(searchLower)
+        tag.value.toLowerCase().includes(searchLower),
     );
   })();
 
@@ -101,10 +101,10 @@ const filteredTags = computed(() => {
 // 태그 칩 최대 3개 + 나머지 +N
 const MAX_VISIBLE_TAGS = 3;
 const visibleSelectedTags = computed(() =>
-  selectedTags.value.slice(0, MAX_VISIBLE_TAGS)
+  selectedTags.value.slice(0, MAX_VISIBLE_TAGS),
 );
 const hiddenTagCount = computed(() =>
-  Math.max(0, selectedTags.value.length - MAX_VISIBLE_TAGS)
+  Math.max(0, selectedTags.value.length - MAX_VISIBLE_TAGS),
 );
 
 // 필터 요약
@@ -322,7 +322,7 @@ function emitReset() {
           placeholder="예) 1409 (비워두면 번호 조건 없이 검색)"
           class="w-full rounded-lg border-gray-300 text-sm focus:border-yellow-400 focus:ring-yellow-400"
           @keyup.enter="emitSearch"
-        >
+        />
       </div>
 
       <!-- 난이도 / 최소 해결자 수 -->
@@ -424,7 +424,7 @@ function emitReset() {
             placeholder="최소 해결자 수"
             class="w-32 rounded-lg border-gray-300 text-xs focus:border-yellow-400 focus:ring-yellow-400"
             @keyup.enter="emitSearch"
-          >
+          />
 
           <!-- 일반 모드에서만: 미해결만/모든 문제 -->
           <button
@@ -521,7 +521,7 @@ function emitReset() {
                 placeholder="태그 검색 (예: DP, Greedy)"
                 class="flex-1 rounded-md border-gray-300 text-xs focus:border-yellow-400 focus:ring-yellow-400"
                 @keyup.enter="emitSearch"
-              >
+              />
             </div>
 
             <button

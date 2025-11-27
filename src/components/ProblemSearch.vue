@@ -23,7 +23,7 @@ function matchesSelectedTags(problem, selectedTags) {
 
   const selectedLower = selectedTags.map((t) => t.toLowerCase());
   return problem.tags.some((ptag) =>
-    selectedLower.some((st) => ptag.toLowerCase().includes(st))
+    selectedLower.some((st) => ptag.toLowerCase().includes(st)),
   );
 }
 
@@ -102,7 +102,7 @@ async function handleFiltersSearch(filter) {
 
       if (hasTag) {
         baseResults = baseResults.filter((p) =>
-          matchesSelectedTags(p, filter.selectedTags)
+          matchesSelectedTags(p, filter.selectedTags),
         );
       }
     } else {
@@ -119,7 +119,7 @@ async function handleFiltersSearch(filter) {
 
       if (hasTag) {
         baseResults = baseResults.filter((p) =>
-          matchesSelectedTags(p, filter.selectedTags)
+          matchesSelectedTags(p, filter.selectedTags),
         );
       }
     }
@@ -239,7 +239,8 @@ function onClickProblem(problem) {
             </span>
             <span
               v-if="
-                problem.reviewCount !== undefined && problem.reviewCount !== null
+                problem.reviewCount !== undefined &&
+                problem.reviewCount !== null
               "
               class="text-[11px] text-blue-600"
             >

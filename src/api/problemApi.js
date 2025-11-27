@@ -5,7 +5,8 @@ function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-const MOCK_PROBLEMS = [
+//TODO: dependency management
+export const MOCK_PROBLEMS = [
   {
     id: 1409,
     title: "피보나치 수 1",
