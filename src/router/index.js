@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from "vue-router";
 import BoardList from "../components/BoardList.vue";
 import ProblemBoard from "../components/ProblemBoard.vue";
 import GroupList from "../components/group/GroupList.vue";
+import GroupCreate from "../components/group/GroupCreate.vue";
 
 const routes = [
   {
@@ -12,6 +13,12 @@ const routes = [
     path: "/groups",
     name: "GroupList",
     component: GroupList,
+    props: true,
+  },
+  {
+    path: "/groups/create",
+    name: "GroupCreate",
+    component: GroupCreate,
   },
   {
     path: "/groups/:groupId/boards",

@@ -18,6 +18,10 @@ function goGroup(groupId) {
   });
 }
 
+function goCreateGroup() {
+  router.push({ name: "GroupCreate" });
+}
+
 async function handleLeaveGroup(groupId) {
   const target = groups.value.find((g) => g.id === groupId);
   const name = target?.name ?? "이 그룹";
@@ -63,6 +67,13 @@ async function handleLeaveGroup(groupId) {
               열립니다.
             </p>
           </div>
+          <button
+            type="button"
+            class="px-4 py-2.5 rounded-lg text-sm font-semibold text-white bg-yellow-500 hover:bg-yellow-600 shrink-0 transition-colors"
+            @click="goCreateGroup"
+          >
+            + 스터디 그룹 생성
+          </button>
         </div>
       </div>
 
