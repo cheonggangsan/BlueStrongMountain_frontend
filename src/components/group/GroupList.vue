@@ -1,9 +1,11 @@
 <script setup>
-import { onMounted } from "vue";
+import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
-import { groups, fetchGroups } from "../../data/groupStore";
+import { groups, fetchGroups, leaveGroup } from "../../data/groupStore";
 
 const router = useRouter();
+
+const leavingGroupId = ref(null);
 
 onMounted(async () => {
   await fetchGroups();
@@ -14,6 +16,27 @@ function goGroup(groupId) {
     name: "BoardList",
     params: { groupId },
   });
+}
+
+async function handleLeaveGroup(groupId) {
+  const target = groups.value.find((g) => g.id === groupId);
+  const name = target?.name ?? "이 그룹";
+
+  const ok = window.confirm(
+    `정말 '${name}' 그룹에서 탈퇴하시겠습니까?\n` +
+      "탈퇴해도 기존에 풀었던 문제 기록은 유지되지만, 이 그룹의 보드에는 더 이상 접근할 수 없습니다.",
+  );
+  if (!ok) return;
+
+  try {
+    leavingGroupId.value = groupId;
+    await leaveGroup(groupId); // 실제로는 백엔드 API 호출 자리
+  } catch (e) {
+    console.error(e);
+    alert("그룹 탈퇴 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+  } finally {
+    leavingGroupId.value = null;
+  }
 }
 </script>
 
@@ -49,7 +72,6 @@ function goGroup(groupId) {
           v-for="group in groups"
           :key="group.id"
           class="group relative flex cursor-pointer flex-col justify-between overflow-hidden rounded-2xl border border-gray-200 bg-white/90 p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-yellow-300 hover:shadow-md"
-          @click="goGroup(group.id)"
         >
           <!-- 상단 색띠 -->
           <div
@@ -88,12 +110,26 @@ function goGroup(groupId) {
               </span>
             </div>
 
-            <span
-              class="inline-flex items-center gap-1 text-[11px] font-medium text-yellow-600 group-hover:text-yellow-700"
-            >
-              들어가기
-              <span class="text-xs">↗</span>
-            </span>
+            <div class="flex items-center gap-1">
+              <!-- 그룹 입장 -->
+              <button
+                type="button"
+                class="px-3 py-1.5 text-xs font-semibold rounded-lg border border-yellow-400 bg-yellow-50 text-yellow-700 hover:bg-yellow-100 transition-colors"
+                @click="goGroup(group.id)"
+              >
+                그룹 들어가기
+              </button>
+
+              <!-- 그룹 탈퇴 -->
+              <button
+                type="button"
+                class="px-3 py-1.5 text-xs font-semibold rounded-lg border border-red-400 bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                :disabled="leavingGroupId === group.id"
+                @click="handleLeaveGroup(group.id)"
+              >
+                {{ leavingGroupId === group.id ? "탈퇴 중..." : "그룹 탈퇴" }}
+              </button>
+            </div>
           </div>
         </li>
       </ul>
