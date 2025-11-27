@@ -123,7 +123,10 @@ describe("BoardList.vue", () => {
 
     await createButton.trigger("click");
 
-    expect(pushMock).toHaveBeenCalledWith({ name: "BoardCreate" });
+    expect(pushMock).toHaveBeenCalledWith({
+      name: "BoardCreate",
+      params: { groupId: 1 },
+    });
   });
 
   it("수정 버튼 클릭 시 BoardEdit 라우트로 이동한다", async () => {
