@@ -15,6 +15,7 @@ const MOCK_GROUPS = [
     visibility: "PRIVATE",
     managerIds: [1],
     memberIds: [1, 2, 3, 4, 5],
+    updatedAt: "2025-01-01T12:00:00.000Z",
   },
   {
     id: 2,
@@ -24,6 +25,7 @@ const MOCK_GROUPS = [
     visibility: "PRIVATE",
     managerIds: [2],
     memberIds: [2, 3, 4, 5],
+    updatedAt: "2025-01-03T09:30:00.000Z",
   },
   {
     id: 3,
@@ -33,6 +35,7 @@ const MOCK_GROUPS = [
     visibility: "PRIVATE",
     managerIds: [3],
     memberIds: [3, 4, 5, 6, 7, 8],
+    updatedAt: "2025-01-03T09:30:00.000Z",
   },
 ];
 
@@ -87,6 +90,8 @@ export async function createGroup(payload) {
     ...(payload.managerIds || []),
   ]);
 
+  const now = new Date().toISOString();
+
   const newGroup = {
     id: Date.now(), // Mock용 ID
     name: payload.title,
@@ -95,6 +100,7 @@ export async function createGroup(payload) {
     managerIds: [...(payload.managerIds || [])],
     memberIds: [...(payload.memberIds || [])],
     memberCount: memberIdSet.size,
+    updatedAt: now,
   };
 
   LOCAL_GROUP_DB.value = [newGroup, ...LOCAL_GROUP_DB.value];
@@ -141,6 +147,8 @@ export async function updateGroup(groupId, payload) {
     ...(payload.managerIds || []),
   ]);
 
+  const now = new Date().toISOString();
+
   const updated = {
     ...LOCAL_GROUP_DB.value[index],
     name: payload.title,
@@ -149,6 +157,7 @@ export async function updateGroup(groupId, payload) {
     managerIds: [...(payload.managerIds || [])],
     memberIds: [...(payload.memberIds || [])],
     memberCount: memberIdSet.size,
+    updatedAt: now,
   };
 
   LOCAL_GROUP_DB.value.splice(index, 1, updated);

@@ -1,11 +1,13 @@
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
 import { useRouter } from "vue-router";
 import { groups, fetchGroups, leaveGroup } from "../../data/groupStore";
 
 const router = useRouter();
 
 const leavingGroupId = ref(null);
+
+const searchQuery = ref("");
 
 onMounted(async () => {
   await fetchGroups();
@@ -49,6 +51,37 @@ async function handleLeaveGroup(groupId) {
     leavingGroupId.value = null;
   }
 }
+
+const filteredGroups = computed(() => {
+  const q = searchQuery.value.trim().toLowerCase();
+
+  let list = groups.value;
+
+  if (q) {
+    list = list.filter((g) => {
+      const name = g.name?.toLowerCase() ?? "";
+      const desc = g.description?.toLowerCase() ?? "";
+      return name.includes(q) || desc.includes(q);
+    });
+  }
+
+  // 정렬: updatedAt 내림차순 → 없으면 id 내림차순
+  return [...list].sort((a, b) => {
+    const aTime = a.updatedAt || 0;
+    const bTime = b.updatedAt || 0;
+
+    if (aTime && bTime) {
+      // ISO 문자열이면 문자열 비교로도 시간 순서가 유지된다.
+      return String(bTime).localeCompare(String(aTime));
+    }
+
+    if (aTime) return -1;
+    if (bTime) return 1;
+
+    // 둘 다 updatedAt 없으면 id 기준으로 가장 최근 생성(큰 숫자) 우선
+    return (b.id || 0) - (a.id || 0);
+  });
+});
 </script>
 
 <template>
@@ -84,10 +117,49 @@ async function handleLeaveGroup(groupId) {
         </div>
       </div>
 
+      <!-- 그룹 검색 바 -->
+      <div class="mb-4 flex items-center gap-2">
+        <div class="relative flex-1">
+          <span
+            class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3"
+          >
+            <svg
+              class="w-4 h-4 text-gray-400"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 20 20"
+            >
+              <path
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z"
+              />
+            </svg>
+          </span>
+          <input
+            v-model="searchQuery"
+            type="text"
+            placeholder="그룹 이름 또는 설명으로 검색..."
+            class="block w-full rounded-lg border border-gray-200 bg-white py-2.5 pl-9 pr-3 text-xs sm:text-sm text-gray-900 placeholder-gray-400 focus:border-yellow-400 focus:ring-yellow-400"
+          />
+        </div>
+        <span
+          v-if="searchQuery"
+          class="hidden sm:inline-flex text-[11px] text-gray-400"
+        >
+          "{{ searchQuery }}" 검색 결과
+          <span class="font-semibold text-gray-600 ml-1">
+            {{ filteredGroups.length }}개
+          </span>
+        </span>
+      </div>
+
       <!-- 그룹 리스트 -->
       <ul class="grid gap-3 sm:gap-4 md:grid-cols-2">
         <li
-          v-for="group in groups"
+          v-for="group in filteredGroups"
           :key="group.id"
           class="group relative flex cursor-pointer flex-col justify-between overflow-hidden rounded-2xl border border-gray-200 bg-white/90 p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-yellow-300 hover:shadow-md"
         >
@@ -115,6 +187,15 @@ async function handleLeaveGroup(groupId) {
 
               <p class="mt-1 line-clamp-2 text-[11px] sm:text-xs text-gray-500">
                 {{ group.description }}
+              </p>
+
+              <p
+                v-if="group.updatedAt"
+                class="mt-1 text-[10px] text-gray-400"
+              >
+                최근 업데이트:
+                {{ group.updatedAt }}
+                <!-- ⚠️ 나중에 dayjs 같은 걸로 예쁘게 포맷팅 가능 -->
               </p>
             </div>
           </div>
