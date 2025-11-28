@@ -13,6 +13,8 @@ const MOCK_GROUPS = [
     description: "골드 5 ~ 골드 3 위주, 주 3회 모임",
     memberCount: 5,
     visibility: "PRIVATE",
+    managerIds: [1],
+    memberIds: [1, 2, 3, 4, 5],
   },
   {
     id: 2,
@@ -20,6 +22,8 @@ const MOCK_GROUPS = [
     description: "네트워크/OS/DB 이론 복습 스터디",
     memberCount: 4,
     visibility: "PRIVATE",
+    managerIds: [2],
+    memberIds: [2, 3, 4, 5],
   },
   {
     id: 3,
@@ -27,6 +31,8 @@ const MOCK_GROUPS = [
     description: "사내 해커톤 준비용 그룹",
     memberCount: 6,
     visibility: "PRIVATE",
+    managerIds: [3],
+    memberIds: [3, 4, 5, 6, 7, 8],
   },
 ];
 
@@ -85,8 +91,10 @@ export async function createGroup(payload) {
     id: Date.now(), // Mock용 ID
     name: payload.title,
     description: payload.description || "",
-    memberCount: memberIdSet.size,
     visibility: payload.visibility || "PRIVATE",
+    managerIds: [...(payload.managerIds || [])],
+    memberIds: [...(payload.memberIds || [])],
+    memberCount: memberIdSet.size,
   };
 
   LOCAL_GROUP_DB.value = [newGroup, ...LOCAL_GROUP_DB.value];
@@ -96,4 +104,57 @@ export async function createGroup(payload) {
   console.log("[Mock] 새 그룹 생성 완료:", newGroup);
 
   return newGroup;
+}
+
+// 그룹 하나 상세 조회 (GET /api/v1/groups/{groupId} mock)
+export async function fetchGroupById(groupId) {
+  const numericId = Number(groupId);
+  const found = LOCAL_GROUP_DB.value.find((g) => g.id === numericId);
+
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      if (found) {
+        console.log(`[Mock] 그룹 ${numericId} 상세 조회 성공`, found);
+        resolve(found);
+      } else {
+        console.error(`[Mock] 그룹 ${numericId}를 찾을 수 없습니다.`);
+        reject(new Error("Group Not Found"));
+      }
+    }, 300);
+  });
+}
+
+// 그룹 수정 (PUT /api/v1/groups/{groupId} mock)
+export async function updateGroup(groupId, payload) {
+  // payload:
+  // { title, description, visibility, managerIds, memberIds }
+  const numericId = Number(groupId);
+  const index = LOCAL_GROUP_DB.value.findIndex((g) => g.id === numericId);
+
+  if (index === -1) {
+    console.error(`[Mock] 수정할 그룹 ${numericId}을(를) 찾을 수 없습니다.`);
+    throw new Error("Group Not Found");
+  }
+
+  const memberIdSet = new Set([
+    ...(payload.memberIds || []),
+    ...(payload.managerIds || []),
+  ]);
+
+  const updated = {
+    ...LOCAL_GROUP_DB.value[index],
+    name: payload.title,
+    description: payload.description || "",
+    visibility: payload.visibility || "PRIVATE",
+    managerIds: [...(payload.managerIds || [])],
+    memberIds: [...(payload.memberIds || [])],
+    memberCount: memberIdSet.size,
+  };
+
+  LOCAL_GROUP_DB.value.splice(index, 1, updated);
+  groups.value = [...LOCAL_GROUP_DB.value];
+
+  console.log(`[Mock] 그룹 ${numericId} 수정 완료`, updated);
+
+  return updated;
 }

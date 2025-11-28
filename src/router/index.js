@@ -3,6 +3,7 @@ import BoardList from "../components/BoardList.vue";
 import ProblemBoard from "../components/ProblemBoard.vue";
 import GroupList from "../components/group/GroupList.vue";
 import GroupCreate from "../components/group/GroupCreate.vue";
+import GroupEdit from "../components/group/GroupEdit.vue";
 
 const routes = [
   {
@@ -19,6 +20,12 @@ const routes = [
     path: "/groups/create",
     name: "GroupCreate",
     component: GroupCreate,
+  },
+  {
+    path: "/groups/:groupId/edit",
+    name: "GroupEdit",
+    component: GroupEdit,
+    props: true,
   },
   {
     path: "/groups/:groupId/boards",

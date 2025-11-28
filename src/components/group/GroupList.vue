@@ -22,6 +22,13 @@ function goCreateGroup() {
   router.push({ name: "GroupCreate" });
 }
 
+function goEditGroup(groupId) {
+  router.push({
+    name: "GroupEdit",
+    params: { groupId },
+  });
+}
+
 async function handleLeaveGroup(groupId) {
   const target = groups.value.find((g) => g.id === groupId);
   const name = target?.name ?? "이 그룹";
@@ -139,6 +146,15 @@ async function handleLeaveGroup(groupId) {
                 @click="handleLeaveGroup(group.id)"
               >
                 {{ leavingGroupId === group.id ? "탈퇴 중..." : "그룹 탈퇴" }}
+              </button>
+
+              <!-- 그룹 수정 -->
+              <button
+                type="button"
+                class="px-3 py-1.5 text-xs font-medium border rounded-lg bg-white text-gray-700 hover:bg-gray-50"
+                @click.stop="goEditGroup(group.id)"
+              >
+                수정
               </button>
             </div>
           </div>
