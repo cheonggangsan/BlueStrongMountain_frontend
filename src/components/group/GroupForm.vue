@@ -201,7 +201,7 @@ function handleCancel() {
             />
             <span class="text-xs"> 비공개 (초대된 멤버만 입장 가능) </span>
           </label>
-
+          <!-- TODO: Apply public mode when extending
           <label
             class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer"
             :class="
@@ -217,6 +217,7 @@ function handleCancel() {
             />
             <span class="text-xs"> 공개 (링크를 아는 사람은 신청 가능) </span>
           </label>
+          -->
         </div>
       </div>
 
