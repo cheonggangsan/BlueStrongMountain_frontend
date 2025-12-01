@@ -30,15 +30,16 @@ onMounted(async () => {
 
       // 폼 필드 초기화
       title.value = existingBoard.title;
-      deadline.value = existingBoard.deadline || ""; // null 방지
+      deadline.value = existingBoard.deadline || "";
 
       // 문제 목록 초기화 (문제 상세 데이터 구조가 필요합니다.)
       // Mock DB에 문제 배열이 있다고 가정해야 합니다. (이 부분은 Mock DB 구조에 따라 다름)
       // 여기서는 임시로 문제를 로드하는 과정만 표시합니다.
-      selectedProblems.value = existingBoard.problems || [];
+      selectedProblems.value = existingBoard.problems
+        ? [...existingBoard.problems]
+        : [];
     } catch (e) {
       console.error("보드 데이터 로드 실패:", e);
-      // 에러 처리: 목록으로 돌아가거나 에러 메시지 표시
     }
   }
 });
@@ -106,20 +107,21 @@ async function handlePost() {
     const res = await postBoard(payload);
     postResult.value = res;
 
+    const groupId = Number(route.params.groupId);
+
     //TODO: integrate backend
     addBoard({
       id: res?.id || Date.now(),
+      groupId,
       title: payload.title,
       deadline: payload.deadline,
       problems: selectedProblems.value,
       // problemsCount: payload.problems.length,
     });
 
-    const groupId = route.params.groupId || 1;
-
     await fetchBoards(groupId);
 
-    router.push({ name: "BoardList" });
+    router.push({ name: "BoardList", params: { groupId } });
   } catch (e) {
     console.error(e);
     postError.value = "서버 전송 중 오류가 발생했습니다.";
@@ -135,11 +137,14 @@ async function handleUpdate() {
   postError.value = "";
 
   try {
+    const groupId = Number(route.params.groupId);
+
     // 1) 백엔드로 보낼 payload (문제는 id + order만)
     //    - 실제 백엔드에는 보통 문제 전체 객체를 안 넣고
     //      { problemId, order } 만 보관한다.
     const apiPayload = {
       id: boardId.value,
+      groupId,
       title: title.value.trim(),
       deadline: deadline.value || null,
       problems: selectedProblems.value.map((p, index) => ({
@@ -152,19 +157,21 @@ async function handleUpdate() {
     // await putBoard(boardId.value, apiPayload);
 
     // 2) Mock DB에는 "문제 전체 객체"를 그대로 저장
-    updateBoard({
+    const storePayload = {
       id: boardId.value,
+      groupId,
       title: apiPayload.title,
       deadline: apiPayload.deadline,
       problems: [...selectedProblems.value],
-    });
+    };
+
+    updateBoard(storePayload);
 
     // 3. 목록 데이터 갱신
-    const groupId = route.params.groupId || 1;
     await fetchBoards(groupId);
 
     // 4. 목록 페이지로 이동
-    router.push({ name: "BoardList" });
+    router.push({ name: "BoardList", params: { groupId } });
   } catch (e) {
     console.error(e);
     postError.value = "서버 전송 중 오류가 발생했습니다.";
