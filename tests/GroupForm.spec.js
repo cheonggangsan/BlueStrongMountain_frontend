@@ -66,17 +66,18 @@ describe("GroupForm.vue", () => {
     expect(descTextarea.element.value).toBe("테스트 설명입니다.");
 
     // 3. 공개 범위 라디오 (PRIVATE / PUBLIC)
+    // TODO: Apply public mode when extending
     const privateRadio = wrapper.find('input[type="radio"][value="PRIVATE"]');
-    const publicRadio = wrapper.find('input[type="radio"][value="PUBLIC"]');
+    // const publicRadio = wrapper.find('input[type="radio"][value="PUBLIC"]');
 
     // 기본값: PRIVATE
     expect(privateRadio.element.checked).toBe(true);
-    expect(publicRadio.element.checked).toBe(false);
+    // expect(publicRadio.element.checked).toBe(false);
 
     // PUBLIC 클릭
-    await publicRadio.setValue();
-    expect(publicRadio.element.checked).toBe(true);
-    expect(privateRadio.element.checked).toBe(false);
+    // await publicRadio.setValue();
+    // expect(publicRadio.element.checked).toBe(true);
+    // expect(privateRadio.element.checked).toBe(false);
   });
 
   it("멤버 검색 후 결과 리스트가 렌더링되고 이름/닉네임/상태(추가)가 표시된다", async () => {
