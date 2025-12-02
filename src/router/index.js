@@ -4,11 +4,13 @@ import ProblemBoard from "../components/ProblemBoard.vue";
 import GroupList from "../components/group/GroupList.vue";
 import GroupCreate from "../components/group/GroupCreate.vue";
 import GroupEdit from "../components/group/GroupEdit.vue";
+import LandingMain from "../views/LandingMain.vue";
 
 const routes = [
   {
     path: "/",
-    redirect: "/groups",
+    name: "Home",
+    component: LandingMain,
   },
   {
     path: "/groups",
