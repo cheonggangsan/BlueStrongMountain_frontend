@@ -9,8 +9,25 @@ vi.mock("vue-router", () => ({
   }),
 }));
 
-import * as mockAuthApi from "../src/api/mockAuthApi";
-import SignupView from "../src/views/SignupView.vue";
+import * as mockAuthApi from "@/api/mockAuthApi";
+import SignupView from "@/views/SignupView.vue";
+
+async function goToFormStep(wrapper) {
+  const checkboxes = wrapper.findAll('input[type="checkbox"]');
+  expect(checkboxes.length).toBeGreaterThanOrEqual(2);
+
+  await checkboxes[0].setValue(true); // 필수1
+  await checkboxes[1].setValue(true); // 필수2
+
+  const proceedButton = wrapper
+    .findAll("button")
+    .find((btn) => btn.text().includes("약관에 동의하고 회원가입 진행"));
+
+  expect(proceedButton).toBeTruthy();
+
+  await proceedButton.trigger("click");
+  await flushPromises();
+}
 
 describe("SignupView", () => {
   beforeEach(() => {
@@ -21,6 +38,8 @@ describe("SignupView", () => {
   it("필수 필드가 비어 있으면 검증 에러를 보여준다", async () => {
     const wrapper = mount(SignupView);
 
+    await goToFormStep(wrapper);
+
     await wrapper.find("form").trigger("submit.prevent");
     await flushPromises();
 
@@ -29,6 +48,7 @@ describe("SignupView", () => {
 
   it("비밀번호와 확인이 다르면 에러를 보여준다", async () => {
     const wrapper = mount(SignupView);
+    await goToFormStep(wrapper);
 
     await wrapper.find("#signup-email").setValue("user@example.com");
     await wrapper.find("#nickname").setValue("user");
@@ -53,6 +73,7 @@ describe("SignupView", () => {
     });
 
     const wrapper = mount(SignupView);
+    await goToFormStep(wrapper);
 
     await wrapper.find("#signup-email").setValue("user@example.com");
     await wrapper.find("#nickname").setValue("user");
@@ -79,29 +100,24 @@ describe("SignupView", () => {
       });
 
     const wrapper = mount(SignupView);
+    await goToFormStep(wrapper);
 
     // 닉네임 입력
     await wrapper.find("#nickname").setValue("uniqueUser");
 
-    // '중복 확인' 버튼 찾기
     const nicknameCheckButton = wrapper
       .findAll("button")
       .find((btn) => btn.text().includes("중복 확인"));
-
     expect(nicknameCheckButton).toBeTruthy();
 
     await nicknameCheckButton.trigger("click");
     await flushPromises();
 
-    // API가 올바른 파라미터로 호출되었는지
     expect(checkSpy).toHaveBeenCalledWith({ username: "uniqueUser" });
-
-    // 사용 가능 메시지 노출
     expect(wrapper.text()).toContain("사용 가능한 닉네임입니다.");
   });
 
   it("중복된 닉네임이면 경고 메시지를 보여주고, 제출 시 mockSignup이 호출되지 않는다", async () => {
-    // 닉네임 중복 API: duplicated=true 응답
     vi.spyOn(mockAuthApi, "mockCheckUsernameDuplicate").mockResolvedValue({
       duplicated: true,
       available: false,
@@ -116,11 +132,11 @@ describe("SignupView", () => {
     });
 
     const wrapper = mount(SignupView);
+    await goToFormStep(wrapper);
 
     await wrapper.find("#signup-email").setValue("dup@example.com");
     await wrapper.find("#nickname").setValue("dupUser");
 
-    // 중복 확인 버튼 클릭
     const nicknameCheckButton = wrapper
       .findAll("button")
       .find((btn) => btn.text().includes("중복 확인"));
@@ -129,23 +145,17 @@ describe("SignupView", () => {
     await nicknameCheckButton.trigger("click");
     await flushPromises();
 
-    // 중복 경고 메시지 노출
     expect(wrapper.text()).toContain(
       "이미 사용 중인 닉네임입니다. 다른 닉네임을 입력해주세요.",
     );
 
-    // 비밀번호 입력은 정상적으로
     await wrapper.find("#signup-password").setValue("password123");
     await wrapper.find("#signup-password-confirm").setValue("password123");
 
-    // 폼 제출
     await wrapper.find("form").trigger("submit.prevent");
     await flushPromises();
 
-    // 중복 상태라면 mockSignup은 호출되지 않아야 한다
     expect(signupSpy).not.toHaveBeenCalled();
-
-    // 상단 에러 메시지도 닉네임 중복 에러로 보여야 함
     expect(wrapper.text()).toContain(
       "이미 사용 중인 닉네임입니다. 다른 닉네임을 입력해주세요.",
     );

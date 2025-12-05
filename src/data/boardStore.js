@@ -70,7 +70,7 @@ const MOCK_DB_DATA_WITH_PROBLEMS = [
     groupId: 1,
     title: "리액트 vs 뷰 비교 분석",
     deadline: getDateStr(-1),
-    problems: [MOCK_PROBLEMS[13], MOCK_PROBLEMS[14]],
+    problems: [MOCK_PROBLEMS[12], MOCK_PROBLEMS[13]],
     problemsCount: 2,
   },
 ];

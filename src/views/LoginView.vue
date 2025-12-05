@@ -1,18 +1,22 @@
 <script setup>
 import { ref } from "vue";
-import { useRouter } from "vue-router";
-// TODO: 실제 API 연동 버전 (JWT 없는 ID/PW) 아니면 /stores/authStore
-// import { loginWithIdPw } from "../api/authApi";
-
-// TODO: mock 버전 (백엔드 붙기 전까지 사용)
-import { mockLogin } from "../api/mockAuthApi";
+import { useRouter, useRoute } from "vue-router";
+import { useAuthStore } from "@/data/authStore";
 
 const router = useRouter();
+const route = useRoute();
+const auth = useAuthStore();
 
 const email = ref("");
 const password = ref("");
 const isSubmitting = ref(false);
 const errorMessage = ref("");
+const infoMessage = ref("");
+
+if (route.query.reason === "passwordChanged") {
+  infoMessage.value =
+    "비밀번호가 변경되었습니다. 새 비밀번호로 다시 로그인해 주세요.";
+}
 
 function validate() {
   errorMessage.value = "";
@@ -34,33 +38,24 @@ async function handleSubmit() {
   if (!validate()) return;
 
   isSubmitting.value = true;
+  auth.resetError();
+
   try {
-    // TODO: ===== 1) 지금: mock + ID/PW 기반 =====
-    const { user /*, accessToken */ } = await mockLogin({
-      email: email.value,
+    // authStore가 내부에서 mockLogin(or 나중에 loginWithIdPw)을 호출
+    await auth.login({
+      id: email.value, // mock에서는 email로 사용
       password: password.value,
     });
-    console.log("로그인 성공 (mock)", user);
-    // 나중에 JWT 도입 시 accessToken 활용:
-    // authStore.setAuth(user, accessToken);
-
-    // ===== 2) 나중에: 실제 API + 세션(ID/PW) =====
-    // const { user } = await loginWithIdPw({
-    //   id: email.value, // 서버에서 ID로 쓸 값 (이메일이면 그대로)
-    //   password: password.value,
-    // });
 
     router.push({ name: "GroupList" });
   } catch (e) {
-    errorMessage.value = "이메일 또는 비밀번호가 올바르지 않습니다.";
+    // authStore.error에 백엔드/목 기준 메시지가 들어있도록 설계해둠
+    errorMessage.value =
+      auth.error.value || "이메일 또는 비밀번호가 올바르지 않습니다.";
     console.log(e); // TODO: remove and apply logging
   } finally {
     isSubmitting.value = false;
   }
-}
-
-function goToHome() {
-  router.push({ name: "Home" });
 }
 
 function goToForgotPassword() {
@@ -76,15 +71,6 @@ function goToSignup() {
   <div
     class="min-h-screen bg-gradient-to-b from-yellow-50/70 via-white to-gray-50 text-gray-900 flex flex-col"
   >
-    <header class="w-full max-w-5xl mx-auto px-4 sm:px-6 pt-6">
-      <h1
-        class="text-xl font-semibold tracking-tight cursor-pointer"
-        @click="goToHome"
-      >
-        BlueStrongMountain
-      </h1>
-    </header>
-
     <main class="flex-1 flex items-center justify-center px-4 sm:px-6 pb-12">
       <div
         class="w-full max-w-md bg-white/80 backdrop-blur rounded-2xl shadow-sm border border-yellow-100/60 px-6 py-8 sm:px-8"
@@ -92,6 +78,13 @@ function goToSignup() {
         <h2 class="text-2xl font-bold text-gray-900 tracking-tight">로그인</h2>
         <p class="mt-2 text-sm text-gray-600">
           알고리즘 보드를 관리하려면 먼저 로그인하세요.
+        </p>
+
+        <p
+          v-if="infoMessage"
+          class="mt-4 text-sm text-green-700 bg-green-50 border border-green-100 rounded-lg px-3 py-2"
+        >
+          {{ infoMessage }}
         </p>
 
         <p

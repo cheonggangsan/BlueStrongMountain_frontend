@@ -2,8 +2,10 @@
 import { ref, onMounted, computed } from "vue";
 import { useRouter } from "vue-router";
 import { groups, fetchGroups, leaveGroup } from "../../data/groupStore";
+import { useAuthStore } from "../../data/authStore";
 
 const router = useRouter();
+const authStore = useAuthStore();
 
 const leavingGroupId = ref(null);
 
@@ -12,6 +14,34 @@ const searchQuery = ref("");
 onMounted(async () => {
   await fetchGroups();
 });
+
+const currentUserId = computed(() => authStore.user.value?.id ?? null);
+
+function hasId(list, uid) {
+  if (!uid || !Array.isArray(list)) return false;
+  return list.some((id) => Number(id) === Number(uid));
+}
+
+function isOwnerOrManager(group) {
+  const uid = currentUserId.value;
+  if (!uid || !group) return false;
+
+  const isOwner = Number(group.ownerId) === Number(uid);
+  const isManager = hasId(group.managerIds, uid);
+
+  return isOwner || isManager;
+}
+
+function isJoinedGroup(group) {
+  const uid = currentUserId.value;
+  if (!uid || !group) return false;
+
+  const isOwner = Number(group.ownerId) === Number(uid);
+  const isManager = hasId(group.managerIds, uid);
+  const isMember = hasId(group.memberIds, uid);
+
+  return isOwner || isManager || isMember;
+}
 
 function goGroup(groupId) {
   router.push({
@@ -35,6 +65,14 @@ async function handleLeaveGroup(groupId) {
   const target = groups.value.find((g) => g.id === groupId);
   const name = target?.name ?? "이 그룹";
 
+  if (currentUserId.value && target?.ownerId === currentUserId.value) {
+    window.alert(
+      "이 그룹의 소유자는 바로 탈퇴할 수 없습니다.\n" +
+        "그룹 수정 > 소유자 변경에서 소유권을 다른 멤버에게 넘긴 뒤 탈퇴해 주세요.",
+    );
+    return;
+  }
+
   const ok = window.confirm(
     `정말 '${name}' 그룹에서 탈퇴하시겠습니까?\n` +
       "탈퇴해도 기존에 풀었던 문제 기록은 유지되지만, 이 그룹의 보드에는 더 이상 접근할 수 없습니다.",
@@ -54,8 +92,13 @@ async function handleLeaveGroup(groupId) {
 
 const filteredGroups = computed(() => {
   const q = searchQuery.value.trim().toLowerCase();
+  const uid = currentUserId.value;
 
-  let list = groups.value;
+  let list = groups.value.filter((g) => isJoinedGroup(g));
+
+  if (!uid) {
+    list = [];
+  }
 
   if (q) {
     list = list.filter((g) => {
@@ -207,6 +250,13 @@ const filteredGroups = computed(() => {
               >
                 👥 멤버 {{ group.memberCount }}명
               </span>
+
+              <span
+                v-if="currentUserId && group.ownerId === currentUserId"
+                class="inline-flex items-center gap-1 rounded-full bg-yellow-100 px-2 py-0.5 text-[10px] font-medium text-yellow-800 border border-yellow-200"
+              >
+                ⭐ 내 소유 그룹
+              </span>
             </div>
 
             <div class="flex items-center gap-1">
@@ -231,6 +281,7 @@ const filteredGroups = computed(() => {
 
               <!-- 그룹 수정 -->
               <button
+                v-if="isOwnerOrManager(group)"
                 type="button"
                 class="px-3 py-1.5 text-xs font-medium border rounded-lg bg-white text-gray-700 hover:bg-gray-50"
                 @click.stop="goEditGroup(group.id)"

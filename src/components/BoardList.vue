@@ -2,6 +2,8 @@
 import { ref, computed, onMounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { boards, deleteBoard, fetchBoards } from "../data/boardStore";
+import { useAuthStore } from "../data/authStore";
+import { fetchGroupById } from "../data/groupStore";
 
 const router = useRouter();
 const route = useRoute();
@@ -9,10 +11,24 @@ const route = useRoute();
 const searchQuery = ref(""); // 검색어
 const currentTab = ref("active"); // 'active' (진행중) | 'past' (종료)
 
+const authStore = useAuthStore();
+const group = ref(null);
+
 onMounted(async () => {
   // 라우터 설정이 { path: '/groups/:groupId', ... } 라고 가정
   const groupId = route.params.groupId;
+  group.value = await fetchGroupById(groupId); // ownerId, managerIds 포함
   await fetchBoards(groupId);
+});
+
+const currentUserId = computed(() => authStore.user.value?.id ?? null);
+
+const canManageBoards = computed(() => {
+  if (!group.value || !currentUserId.value) return false;
+  const uid = currentUserId.value;
+  return (
+    group.value.ownerId === uid || (group.value.managerIds || []).includes(uid)
+  );
 });
 
 // 1. 검색어로 1차 필터링
@@ -106,6 +122,7 @@ async function handleDelete(id) {
       </div>
 
       <button
+        v-if="canManageBoards"
         type="button"
         class="px-4 py-2.5 rounded-lg text-sm font-semibold text-white bg-yellow-500 hover:bg-yellow-600 shrink-0 transition-colors"
         @click="goCreateBoard"
@@ -202,6 +219,7 @@ async function handleDelete(id) {
         </div>
 
         <div
+          v-if="canManageBoards"
           class="flex items-center space-x-2 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity"
         >
           <button

@@ -255,6 +255,150 @@ export async function mockResetPassword({ token, newPassword }) {
   return { ok: true };
 }
 
+export async function mockVerifyPassword({ password }) {
+  await delay(300);
+
+  const current = mockGetCurrentUser();
+  if (!current) {
+    const error = new Error("로그인 상태가 아닙니다.");
+    error.code = "NOT_LOGGED_IN";
+    throw error;
+  }
+
+  const users = loadUsers();
+  const user = users.find((u) => u.id === current.id);
+
+  if (!user || user.password !== password) {
+    const error = new Error("비밀번호가 올바르지 않습니다.");
+    error.code = "INVALID_PASSWORD";
+    throw error;
+  }
+
+  // 비밀번호까지 맞으면, 최신 프로필 리턴
+  return {
+    user: {
+      id: user.id,
+      email: user.email,
+      nickname: user.nickname,
+    },
+  };
+}
+
+// ===== 닉네임 변경 =====
+export async function mockUpdateNickname({ nickname }) {
+  await delay(400);
+
+  const current = mockGetCurrentUser();
+  if (!current) {
+    const error = new Error("로그인 상태가 아닙니다.");
+    error.code = "NOT_LOGGED_IN";
+    throw error;
+  }
+
+  const users = loadUsers();
+  const idx = users.findIndex((u) => u.id === current.id);
+
+  if (idx === -1) {
+    const error = new Error("사용자를 찾을 수 없습니다.");
+    error.code = "USER_NOT_FOUND";
+    throw error;
+  }
+
+  users[idx].nickname = nickname;
+  saveUsers(users);
+
+  // currentUser 캐시도 최신 닉네임으로 업데이트
+  if (typeof window !== "undefined") {
+    window.localStorage.setItem(
+      STORAGE_KEY_CURRENT_USER,
+      JSON.stringify({
+        id: users[idx].id,
+        email: users[idx].email,
+        nickname: users[idx].nickname,
+      }),
+    );
+  }
+
+  return {
+    user: {
+      id: users[idx].id,
+      email: users[idx].email,
+      nickname: users[idx].nickname,
+    },
+  };
+}
+
+// ===== 비밀번호 변경 =====
+export async function mockChangePassword({ newPassword }) {
+  await delay(400);
+
+  const current = mockGetCurrentUser();
+  if (!current) {
+    const error = new Error("로그인 상태가 아닙니다.");
+    error.code = "NOT_LOGGED_IN";
+    throw error;
+  }
+
+  const users = loadUsers();
+  const idx = users.findIndex((u) => u.id === current.id);
+
+  if (idx === -1) {
+    const error = new Error("사용자를 찾을 수 없습니다.");
+    error.code = "USER_NOT_FOUND";
+    throw error;
+  }
+
+  users[idx].password = newPassword;
+  saveUsers(users);
+
+  // 비밀번호 바꾸면 보통 세션/로그인을 끊는 편이라,
+  // mock 기준으로도 currentUser는 유지하되, 실제 서비스에서는 로그아웃 권장.
+  return { ok: true };
+}
+
+// ===== 회원 탈퇴 =====
+export async function mockDeleteAccount() {
+  await delay(400);
+
+  const current = mockGetCurrentUser();
+  if (!current) {
+    const error = new Error("로그인 상태가 아닙니다.");
+    error.code = "NOT_LOGGED_IN";
+    throw error;
+  }
+
+  const users = loadUsers();
+  const nextUsers = users.filter((u) => u.id !== current.id);
+  saveUsers(nextUsers);
+
+  // 로그인 정보/토큰 정리
+  mockLogout();
+
+  return { ok: true };
+}
+
+/**
+ * ===== 실제 백엔드 전환 시 예시 =====
+ *
+ * // authApi.js
+ * export async function verifyPassword({ password }) {
+ *   return httpClient.post("/auth/verify-password", { password });
+ * }
+ *
+ * export async function changePassword({ newPassword }) {
+ *   return httpClient.post("/auth/change-password", { newPassword });
+ * }
+ *
+ * // memberApi.js
+ * export async function updateMyProfile({ nickname }) {
+ *   return httpClient.patch("/members/me", { nickname });
+ * }
+ *
+ * export async function deleteMyAccount() {
+ *   return httpClient.delete("/members/me");
+ * }
+ */
+
 /**
  * ===== 나중에 JWT로 전환할 때 예시 =====
  *
