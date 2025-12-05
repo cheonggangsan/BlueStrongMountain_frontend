@@ -13,7 +13,8 @@ const MOCK_GROUPS = [
     description: "골드 5 ~ 골드 3 위주, 주 3회 모임",
     memberCount: 5,
     visibility: "PRIVATE",
-    managerIds: [1],
+    ownerId: 1764863505459, //TODO: change this code
+    managerIds: [1, 1764863505459],
     memberIds: [1, 2, 3, 4, 5],
     updatedAt: "2025-01-01T12:00:00.000Z",
   },
@@ -23,6 +24,7 @@ const MOCK_GROUPS = [
     description: "네트워크/OS/DB 이론 복습 스터디",
     memberCount: 4,
     visibility: "PRIVATE",
+    ownerId: 2,
     managerIds: [2],
     memberIds: [2, 3, 4, 5],
     updatedAt: "2025-01-03T09:30:00.000Z",
@@ -33,6 +35,7 @@ const MOCK_GROUPS = [
     description: "사내 해커톤 준비용 그룹",
     memberCount: 6,
     visibility: "PRIVATE",
+    ownerId: 3,
     managerIds: [3],
     memberIds: [3, 4, 5, 6, 7, 8],
     updatedAt: "2025-01-03T09:30:00.000Z",
@@ -92,11 +95,18 @@ export async function createGroup(payload) {
 
   const now = new Date().toISOString();
 
+  const ownerId =
+    payload.ownerId ??
+    (payload.managerIds && payload.managerIds.length > 0
+      ? payload.managerIds[0]
+      : null);
+
   const newGroup = {
     id: Date.now(), // Mock용 ID
     name: payload.title,
     description: payload.description || "",
     visibility: payload.visibility || "PRIVATE",
+    ownerId,
     managerIds: [...(payload.managerIds || [])],
     memberIds: [...(payload.memberIds || [])],
     memberCount: memberIdSet.size,
@@ -164,6 +174,56 @@ export async function updateGroup(groupId, payload) {
   groups.value = [...LOCAL_GROUP_DB.value];
 
   console.log(`[Mock] 그룹 ${numericId} 수정 완료`, updated);
+
+  return updated;
+}
+
+export async function changeGroupOwner(groupId, { requesterId, newOwnerId }) {
+  const numericId = Number(groupId);
+  const index = LOCAL_GROUP_DB.value.findIndex((g) => g.id === numericId);
+
+  if (index === -1) {
+    console.error(
+      `[Mock] 소유자 변경 대상 그룹 ${numericId}을(를) 찾을 수 없습니다.`,
+    );
+    throw new Error("Group Not Found");
+  }
+
+  const prev = LOCAL_GROUP_DB.value[index];
+
+  // (mock이니까 간단히) requesterId === prev.ownerId 인지만 체크
+  if (requesterId && prev.ownerId && requesterId !== prev.ownerId) {
+    console.warn("[Mock] 소유자만 소유권을 변경할 수 있습니다.");
+    // 실제라면 403 에러 등으로 처리
+  }
+
+  // 새 소유자는 그룹 멤버여야 한다고 가정
+  const allMemberIds = new Set([
+    ...(prev.memberIds || []),
+    ...(prev.managerIds || []),
+  ]);
+  if (!allMemberIds.has(newOwnerId)) {
+    throw new Error("New owner must be a member of the group");
+  }
+
+  // 새 소유자도 manager로 승급
+  const managerIds = new Set(prev.managerIds || []);
+  managerIds.add(newOwnerId);
+
+  const updated = {
+    ...prev,
+    ownerId: newOwnerId,
+    managerIds: [...managerIds],
+    updatedAt: new Date().toISOString(),
+  };
+
+  LOCAL_GROUP_DB.value.splice(index, 1, updated);
+  groups.value = [...LOCAL_GROUP_DB.value];
+
+  console.log(
+    `[Mock] 그룹 ${numericId} 소유자 변경 완료: ${prev.ownerId} -> ${newOwnerId}`,
+    updated,
+  );
 
   return updated;
 }

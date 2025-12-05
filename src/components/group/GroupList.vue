@@ -2,8 +2,10 @@
 import { ref, onMounted, computed } from "vue";
 import { useRouter } from "vue-router";
 import { groups, fetchGroups, leaveGroup } from "../../data/groupStore";
+import { useAuthStore } from "../../data/authStore";
 
 const router = useRouter();
+const authStore = useAuthStore();
 
 const leavingGroupId = ref(null);
 
@@ -12,6 +14,8 @@ const searchQuery = ref("");
 onMounted(async () => {
   await fetchGroups();
 });
+
+const currentUserId = computed(() => authStore.user.value?.id ?? null);
 
 function goGroup(groupId) {
   router.push({
@@ -34,6 +38,14 @@ function goEditGroup(groupId) {
 async function handleLeaveGroup(groupId) {
   const target = groups.value.find((g) => g.id === groupId);
   const name = target?.name ?? "이 그룹";
+
+  if (currentUserId.value && target?.ownerId === currentUserId.value) {
+    window.alert(
+      "이 그룹의 소유자는 바로 탈퇴할 수 없습니다.\n" +
+        "그룹 수정 > 소유자 변경에서 소유권을 다른 멤버에게 넘긴 뒤 탈퇴해 주세요.",
+    );
+    return;
+  }
 
   const ok = window.confirm(
     `정말 '${name}' 그룹에서 탈퇴하시겠습니까?\n` +
@@ -206,6 +218,13 @@ const filteredGroups = computed(() => {
                 class="inline-flex items-center gap-1 rounded-full bg-gray-50 px-2 py-0.5 text-[10px] font-medium text-gray-500 border border-gray-100"
               >
                 👥 멤버 {{ group.memberCount }}명
+              </span>
+
+              <span
+                v-if="currentUserId && group.ownerId === currentUserId"
+                class="inline-flex items-center gap-1 rounded-full bg-yellow-100 px-2 py-0.5 text-[10px] font-medium text-yellow-800 border border-yellow-200"
+              >
+                ⭐ 내 소유 그룹
               </span>
             </div>
 

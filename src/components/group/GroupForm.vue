@@ -29,6 +29,10 @@ const props = defineProps({
     type: String,
     default: "",
   },
+  showTitle: {
+    type: Boolean,
+    default: true,
+  },
 });
 
 const emit = defineEmits(["submit", "cancel"]);
@@ -154,7 +158,10 @@ function handleCancel() {
 
 <template>
   <div class="p-4 max-w-3xl mx-auto">
-    <h1 class="text-xl font-bold mb-4">
+    <h1
+      v-if="props.showTitle"
+      class="text-xl font-bold mb-4"
+    >
       {{ props.mode === "create" ? "스터디 그룹 생성" : "스터디 그룹 수정" }}
     </h1>
 
