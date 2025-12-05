@@ -72,25 +72,25 @@ const routes = [
     name: "GroupEdit",
     component: GroupEdit,
     props: true,
-    meta: { requiresAuth: true },
+    meta: { requiresAuth: true, requiresGroupManager: true },
   },
   {
     path: "/groups/:groupId/boards",
     name: "BoardList",
     component: BoardList,
-    meta: { requiresAuth: true },
+    meta: { requiresAuth: true, requiresGroupMember: true },
   },
   {
     path: "/groups/:groupId/boards/new",
     name: "BoardCreate",
     component: ProblemBoard,
-    meta: { requiresAuth: true, requiresBoardManager: true },
+    meta: { requiresAuth: true, requiresGroupManager: true },
   },
   {
     path: "/groups/:groupId/boards/:boardId/edit",
     name: "BoardEdit",
     component: ProblemBoard,
-    meta: { requiresAuth: true, requiresBoardManager: true },
+    meta: { requiresAuth: true, requiresGroupManager: true },
   },
 ];
 
@@ -103,12 +103,10 @@ router.beforeEach(async (to, from, next) => {
   const auth = useAuthStore();
 
   // 1) 앱 시작 후 처음 들어오는 라우팅이면, 서버에 한 번 현재 사용자 조회
-  //    - /members/me 기준으로 로그인 여부 판단
   if (!auth.initialized.value && !auth.isRefreshing.value) {
     try {
       await auth.fetchCurrentUser();
     } catch (e) {
-      // fetchCurrentUser 안에서 이미 에러 처리 + user 초기화함
       console.error("[router] fetchCurrentUser error:", e);
     }
   }
@@ -120,57 +118,89 @@ router.beforeEach(async (to, from, next) => {
     return next({
       name: "Login",
       query: {
-        // 로그인 후 다시 돌아갈 수 있도록 redirect 정보 남기기
         redirect: to.fullPath,
       },
-      replace: true, // 뒤로 가기 눌렀을 때 다시 보호 페이지로 튕기지 않게
+      replace: true,
     });
   }
 
   // 3) 비회원 전용 페이지(로그인/회원가입 등)인데 이미 로그인 상태라면
   if (to.meta.guestOnly && isLoggedIn) {
-    // redirect 쿼리가 있으면 그쪽으로, 없으면 홈으로
     const redirect = (to.query.redirect && String(to.query.redirect)) || "/";
     return next(redirect);
   }
 
-  // 4) 보드 생성/수정 권한 체크 (owner 또는 manager만)
-  if (to.meta.requiresBoardManager) {
-    const groupIdParam = to.params.groupId;
-    const groupId = groupIdParam ? Number(groupIdParam) : null;
+  // 4) 그룹 관련 권한 체크
+  const needGroupMember = to.meta.requiresGroupMember;
+  const needGroupManager = to.meta.requiresGroupManager;
+  const groupIdParam = to.params.groupId;
 
-    if (!groupId) {
-      // groupId가 없으면 그냥 그룹 리스트로 보냄
+  // groupId가 있고, 멤버/매니저 권한 둘 중 하나라도 필요한 경우에만 검사
+  if (groupIdParam && (needGroupMember || needGroupManager)) {
+    const groupId = Number(groupIdParam);
+
+    if (!Number.isFinite(groupId)) {
       return next({ name: "GroupList" });
     }
 
+    let group;
     try {
-      const group = await fetchGroupById(groupId);
-      const userId = auth.user.value?.id;
-
-      const isOwner =
-        group.ownerId != null &&
-        userId != null &&
-        Number(group.ownerId) === Number(userId);
-
-      const isManager =
-        Array.isArray(group.managerIds) &&
-        userId != null &&
-        group.managerIds.some((id) => Number(id) === Number(userId));
-
-      if (!isOwner && !isManager) {
-        window.alert(
-          "이 그룹의 관리자 또는 소유자만 보드를 생성/수정할 수 있습니다.",
-        );
-        return next({
-          name: "BoardList",
-          params: { groupId },
-        });
-      }
+      group = await fetchGroupById(groupId);
     } catch (e) {
-      console.error("[router] requiresBoardManager error:", e);
+      console.error("[router] fetchGroupById error:", e);
       window.alert("그룹 정보를 불러올 수 없습니다.");
       return next({ name: "GroupList" });
+    }
+
+    if (!group) {
+      window.alert("해당 그룹을 찾을 수 없습니다.");
+      return next({ name: "GroupList" });
+    }
+
+    const userId = auth.user.value?.id;
+    if (!userId) {
+      return next({
+        name: "Login",
+        query: { redirect: to.fullPath },
+        replace: true,
+      });
+    }
+
+    const uid = Number(userId);
+    const ownerId = group.ownerId != null ? Number(group.ownerId) : null;
+    const managerIds = Array.isArray(group.managerIds)
+      ? group.managerIds.map(Number)
+      : [];
+    const memberIds = Array.isArray(group.memberIds)
+      ? group.memberIds.map(Number)
+      : [];
+
+    const isOwner = ownerId != null && ownerId === uid;
+    const isManager = managerIds.includes(uid);
+    const isMember = memberIds.includes(uid) || isManager || isOwner;
+
+    // 4-1) 그룹 멤버만 접근 가능한 페이지 (BoardList, BoardDetail 등)
+    if (needGroupMember && !isMember) {
+      window.alert("이 그룹 멤버만 접근할 수 있는 페이지입니다.");
+      return next({ name: "GroupList" });
+    }
+
+    // 4-2) owner/manager만 접근 가능한 페이지 (GroupEdit, BoardCreate/Edit)
+    if (needGroupManager && !(isOwner || isManager)) {
+      window.alert("이 그룹의 관리자 또는 소유자만 접근할 수 있습니다.");
+
+      const isBoardRoute = [
+        "BoardList",
+        "BoardCreate",
+        "BoardEdit",
+        "BoardDetail",
+      ].includes(to.name);
+
+      return next(
+        isBoardRoute
+          ? { name: "BoardList", params: { groupId } }
+          : { name: "GroupList" },
+      );
     }
   }
 
