@@ -1,7 +1,9 @@
 <script setup>
 import { useRouter } from "vue-router";
+import { useAuthStore } from "../data/authStore";
 
 const router = useRouter();
+const authStore = useAuthStore();
 
 function goToGroups() {
   router.push({ name: "GroupList" });
@@ -224,8 +226,10 @@ function goToLogin() {
         </div>
       </section>
 
-      <!-- template 맨 아래, </main> 바로 위 정도에 추가 -->
-      <div class="fixed bottom-0 inset-x-0 z-20 px-3 pb-3 sm:px-0 sm:pb-4">
+      <div
+        v-if="!authStore.state.user"
+        class="fixed bottom-0 inset-x-0 z-20 px-3 pb-3 sm:px-0 sm:pb-4"
+      >
         <div
           class="max-w-md mx-auto rounded-2xl bg-gray-900 text-white shadow-lg flex items-center justify-between gap-3 px-4 py-2.5 text-xs sm:text-sm"
         >
