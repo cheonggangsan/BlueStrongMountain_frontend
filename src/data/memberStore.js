@@ -14,6 +14,7 @@ export const MOCK_MEMBERS = [
   { id: 11, name: "볼트", nickname: "devopsOh" },
   { id: 12, name: "썬더", nickname: "backendHan" },
   { id: 13, name: "최캠프", nickname: "devopsOh" },
+  { id: 1764863505459, name: "카카카", nickname: "카카카" },
 ];
 
 export const members = ref([...MOCK_MEMBERS]);

@@ -26,7 +26,7 @@ const MOCK_GROUPS = [
     visibility: "PRIVATE",
     ownerId: 2,
     managerIds: [2],
-    memberIds: [2, 3, 4, 5],
+    memberIds: [2, 3, 4, 5, 1764863505459],
     updatedAt: "2025-01-03T09:30:00.000Z",
   },
   {
@@ -36,7 +36,7 @@ const MOCK_GROUPS = [
     memberCount: 6,
     visibility: "PRIVATE",
     ownerId: 3,
-    managerIds: [3],
+    managerIds: [3, 1764863505459],
     memberIds: [3, 4, 5, 6, 7, 8],
     updatedAt: "2025-01-03T09:30:00.000Z",
   },

@@ -14,6 +14,7 @@ import ResetPasswordView from "../views/ResetPasswordView.vue";
 
 import MyPageView from "../views/MyPageView.vue";
 
+import { fetchGroupById } from "@/data/groupStore";
 import { useAuthStore } from "@/data/authStore";
 
 const routes = [
@@ -83,13 +84,13 @@ const routes = [
     path: "/groups/:groupId/boards/new",
     name: "BoardCreate",
     component: ProblemBoard,
-    meta: { requiresAuth: true },
+    meta: { requiresAuth: true, requiresBoardManager: true },
   },
   {
     path: "/groups/:groupId/boards/:boardId/edit",
     name: "BoardEdit",
     component: ProblemBoard,
-    meta: { requiresAuth: true },
+    meta: { requiresAuth: true, requiresBoardManager: true },
   },
 ];
 
@@ -133,7 +134,47 @@ router.beforeEach(async (to, from, next) => {
     return next(redirect);
   }
 
-  // 4) 그 외에는 그대로 진행
+  // 4) 보드 생성/수정 권한 체크 (owner 또는 manager만)
+  if (to.meta.requiresBoardManager) {
+    const groupIdParam = to.params.groupId;
+    const groupId = groupIdParam ? Number(groupIdParam) : null;
+
+    if (!groupId) {
+      // groupId가 없으면 그냥 그룹 리스트로 보냄
+      return next({ name: "GroupList" });
+    }
+
+    try {
+      const group = await fetchGroupById(groupId);
+      const userId = auth.user.value?.id;
+
+      const isOwner =
+        group.ownerId != null &&
+        userId != null &&
+        Number(group.ownerId) === Number(userId);
+
+      const isManager =
+        Array.isArray(group.managerIds) &&
+        userId != null &&
+        group.managerIds.some((id) => Number(id) === Number(userId));
+
+      if (!isOwner && !isManager) {
+        window.alert(
+          "이 그룹의 관리자 또는 소유자만 보드를 생성/수정할 수 있습니다.",
+        );
+        return next({
+          name: "BoardList",
+          params: { groupId },
+        });
+      }
+    } catch (e) {
+      console.error("[router] requiresBoardManager error:", e);
+      window.alert("그룹 정보를 불러올 수 없습니다.");
+      return next({ name: "GroupList" });
+    }
+  }
+
+  // 5) 그 외에는 그대로 진행
   return next();
 });
 

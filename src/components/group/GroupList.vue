@@ -17,6 +17,32 @@ onMounted(async () => {
 
 const currentUserId = computed(() => authStore.user.value?.id ?? null);
 
+function hasId(list, uid) {
+  if (!uid || !Array.isArray(list)) return false;
+  return list.some((id) => Number(id) === Number(uid));
+}
+
+function isOwnerOrManager(group) {
+  const uid = currentUserId.value;
+  if (!uid || !group) return false;
+
+  const isOwner = Number(group.ownerId) === Number(uid);
+  const isManager = hasId(group.managerIds, uid);
+
+  return isOwner || isManager;
+}
+
+function isJoinedGroup(group) {
+  const uid = currentUserId.value;
+  if (!uid || !group) return false;
+
+  const isOwner = Number(group.ownerId) === Number(uid);
+  const isManager = hasId(group.managerIds, uid);
+  const isMember = hasId(group.memberIds, uid);
+
+  return isOwner || isManager || isMember;
+}
+
 function goGroup(groupId) {
   router.push({
     name: "BoardList",
@@ -66,8 +92,13 @@ async function handleLeaveGroup(groupId) {
 
 const filteredGroups = computed(() => {
   const q = searchQuery.value.trim().toLowerCase();
+  const uid = currentUserId.value;
 
-  let list = groups.value;
+  let list = groups.value.filter((g) => isJoinedGroup(g));
+
+  if (!uid) {
+    list = [];
+  }
 
   if (q) {
     list = list.filter((g) => {
@@ -250,6 +281,7 @@ const filteredGroups = computed(() => {
 
               <!-- 그룹 수정 -->
               <button
+                v-if="isOwnerOrManager(group)"
                 type="button"
                 class="px-3 py-1.5 text-xs font-medium border rounded-lg bg-white text-gray-700 hover:bg-gray-50"
                 @click.stop="goEditGroup(group.id)"
