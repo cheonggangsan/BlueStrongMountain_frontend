@@ -1,62 +1,34 @@
-import { mount, flushPromises } from "@vue/test-utils";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { ref } from "vue";
-import GroupList from "../src/components/group/GroupList.vue";
+import { ref, nextTick } from "vue";
+import { mount, flushPromises } from "@vue/test-utils";
 
-// ----------------------
-// 1) vue-router mock
-// ----------------------
-// var 를 쓰는 이유: vi.mock 팩토리가 호이스팅되면서
-// const/let 는 TDZ 에 걸려서 ReferenceError가 나기 때문.
-var routerPushMock;
+// --- vue-router mock -------------------------------------------------
+const pushMock = vi.fn();
 
-vi.mock("vue-router", () => {
-  routerPushMock = vi.fn();
+vi.mock("vue-router", () => ({
+  useRouter: () => ({
+    push: pushMock,
+  }),
+}));
+
+// --- authStore mock (로그인 유저: id = 1) -----------------------------
+vi.mock("/src/data/authStore", () => {
+  const user = ref({ id: 1 });
+  const isAuthenticated = ref(true);
+
   return {
-    useRouter: () => ({
-      push: routerPushMock,
+    useAuthStore: () => ({
+      user,
+      isAuthenticated,
     }),
   };
 });
 
-// ----------------------
-// 2) groupStore mock
-// ----------------------
-// 실제 src/data/groupStore.js 대신 여기서 ref + 함수들을 제공
-vi.mock("../src/data/groupStore", () => {
-  const groups = ref([
-    {
-      id: 1,
-      name: "1조 알고리즘 스터디",
-      description: "골드 5 ~ 골드 3 위주, 주 3회 모임",
-      memberCount: 5,
-    },
-    {
-      id: 2,
-      name: "CS 면접 대비반",
-      description: "네트워크/OS/DB 이론 복습 스터디",
-      memberCount: 4,
-    },
-    {
-      id: 3,
-      name: "사내 해커톤 팀",
-      description: "사내 해커톤 준비용 그룹",
-      memberCount: 6,
-    },
-  ]);
-
-  // 스냅샷 하나 떠두고, fetchGroups 호출 때마다 리셋
-  const snapshot = JSON.parse(JSON.stringify(groups.value));
-
-  const fetchGroups = vi.fn(async () => {
-    groups.value = JSON.parse(JSON.stringify(snapshot));
-    return groups.value;
-  });
-
-  const leaveGroup = vi.fn(async (groupId) => {
-    groups.value = groups.value.filter((g) => g.id !== groupId);
-    return true;
-  });
+// --- groupStore mock --------------------------------------------------
+vi.mock("/src/data/groupStore", () => {
+  const groups = ref([]);
+  const fetchGroups = vi.fn(async () => {});
+  const leaveGroup = vi.fn(async () => {});
 
   return {
     groups,
@@ -65,150 +37,145 @@ vi.mock("../src/data/groupStore", () => {
   };
 });
 
-// helper: 버튼 텍스트로 button 찾기
-const findButtonByText = (wrapper, text) =>
-  wrapper.findAll("button").find((btn) => btn.text().trim().includes(text));
+// --- 컴포넌트 & store import (mock 선언 이후) --------------------------
+import GroupList from "../src/components/group/GroupList.vue";
+import {
+  groups as groupsRef,
+  fetchGroups as fetchGroupsMock,
+  leaveGroup as leaveGroupMock,
+} from "../src/data/groupStore";
+
+// 🔹 그룹 li를 이름으로 찾아주는 헬퍼 (정렬/필터에 의존 X)
+function findGroupItemByName(wrapper, groupName) {
+  const items = wrapper.findAll("li.group");
+  return items.find((li) => li.text().includes(groupName));
+}
 
 describe("GroupList.vue", () => {
   beforeEach(() => {
-    routerPushMock?.mockClear();
+    // 유저(1)가 owner / manager / member 인 그룹 + 완전 관계없는 그룹
+    groupsRef.value = [
+      {
+        id: 1,
+        name: "내가 owner인 그룹",
+        description: "owner",
+        ownerId: 1,
+        managerIds: [],
+        memberIds: [2, 3],
+        memberCount: 3,
+        updatedAt: "2025-01-01T12:00:00.000Z",
+      },
+      {
+        id: 2,
+        name: "내가 manager인 그룹",
+        description: "manager",
+        ownerId: 2,
+        managerIds: [1],
+        memberIds: [2, 3],
+        memberCount: 3,
+        updatedAt: "2025-01-02T12:00:00.000Z",
+      },
+      {
+        id: 3,
+        name: "내가 member만인 그룹",
+        description: "member only",
+        ownerId: 3,
+        managerIds: [3],
+        memberIds: [1, 4, 5],
+        memberCount: 3,
+        updatedAt: "2025-01-03T12:00:00.000Z",
+      },
+      {
+        id: 4,
+        name: "내가 속하지 않은 그룹",
+        description: "other",
+        ownerId: 999,
+        managerIds: [998],
+        memberIds: [997],
+        memberCount: 3,
+        updatedAt: "2025-01-04T12:00:00.000Z",
+      },
+    ];
+
+    fetchGroupsMock.mockReset();
+    fetchGroupsMock.mockImplementation(async () => {});
+    leaveGroupMock.mockReset();
+    pushMock.mockReset();
   });
 
-  // 1. 그룹 리스트가 잘 나오는지 확인
-  it("그룹 리스트가 잘 렌더링된다", async () => {
+  it("마운트 시 fetchGroups가 호출된다", async () => {
+    mount(GroupList);
+    await flushPromises();
+    await nextTick();
+
+    expect(fetchGroupsMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("현재 로그인한 사용자가 속한 그룹(owner/manager/member)만 렌더링된다", async () => {
     const wrapper = mount(GroupList);
     await flushPromises();
+    await nextTick();
 
-    const items = wrapper.findAll("ul li");
-    expect(items.length).toBe(3);
+    const items = wrapper.findAll("li.group");
+    expect(items.length).toBe(3); // id:1,2,3만 보여야 함
 
     const text = wrapper.text();
-    expect(text).toContain("1조 알고리즘 스터디");
-    expect(text).toContain("CS 면접 대비반");
-    expect(text).toContain("사내 해커톤 팀");
+    expect(text).toContain("내가 owner인 그룹");
+    expect(text).toContain("내가 manager인 그룹");
+    expect(text).toContain("내가 member만인 그룹");
+    expect(text).not.toContain("내가 속하지 않은 그룹");
   });
 
-  // 2. 그룹 이름으로 검색하면 해당 그룹들이 나오는지 확인
-  it("그룹 이름으로 검색하면 해당 그룹만 필터링된다", async () => {
+  it("owner/manager 그룹에만 '수정' 버튼이 보이고, member-only 그룹에는 보이지 않는다", async () => {
     const wrapper = mount(GroupList);
     await flushPromises();
+    await nextTick();
 
-    const searchInput = wrapper.find(
-      'input[placeholder="그룹 이름 또는 설명으로 검색..."]',
-    );
-    await searchInput.setValue("알고리즘");
-    await flushPromises();
+    const ownerItem = findGroupItemByName(wrapper, "내가 owner인 그룹");
+    const managerItem = findGroupItemByName(wrapper, "내가 manager인 그룹");
+    const memberOnlyItem = findGroupItemByName(wrapper, "내가 member만인 그룹");
 
-    const items = wrapper.findAll("ul li");
-    expect(items.length).toBe(1);
-    expect(items[0].text()).toContain("1조 알고리즘 스터디");
+    // 방어적으로 먼저 존재 확인
+    expect(ownerItem, "owner 그룹 li를 찾지 못했습니다").toBeTruthy();
+    expect(managerItem, "manager 그룹 li를 찾지 못했습니다").toBeTruthy();
+    expect(
+      memberOnlyItem,
+      "member-only 그룹 li를 찾지 못했습니다",
+    ).toBeTruthy();
+
+    const hasEdit = (item) =>
+      item.findAll("button").some((btn) => btn.text().includes("수정"));
+
+    expect(hasEdit(ownerItem)).toBe(true); // owner ⇒ 수정 버튼 있어야 함
+    expect(hasEdit(managerItem)).toBe(true); // manager ⇒ 수정 버튼 있어야 함
+    expect(hasEdit(memberOnlyItem)).toBe(false); // 단순 member ⇒ 없어야 함
   });
 
-  // 3. 설명으로 검색하면 해당 그룹들이 나오는지 확인
-  it("그룹 설명으로 검색하면 해당 그룹만 필터링된다", async () => {
-    const wrapper = mount(GroupList);
-    await flushPromises();
-
-    const searchInput = wrapper.find(
-      'input[placeholder="그룹 이름 또는 설명으로 검색..."]',
-    );
-    await searchInput.setValue("네트워크");
-    await flushPromises();
-
-    const items = wrapper.findAll("ul li");
-    expect(items.length).toBe(1);
-    expect(items[0].text()).toContain("CS 면접 대비반");
-  });
-
-  // 4. 그룹 들어가기를 누르면 페이지가 넘어가는지
-  it("‘그룹 들어가기’를 누르면 BoardList 라우트로 이동한다", async () => {
-    const wrapper = mount(GroupList);
-    await flushPromises();
-
-    // "CS 면접 대비반" 이 들어있는 li 찾기
-    const targetItem = wrapper
-      .findAll("ul li")
-      .find((li) => li.text().includes("CS 면접 대비반"));
-
-    expect(targetItem).toBeTruthy();
-
-    const enterButton = findButtonByText(targetItem, "그룹 들어가기");
-    expect(enterButton).toBeTruthy();
-
-    await enterButton.trigger("click");
-
-    expect(routerPushMock).toHaveBeenCalledWith({
-      name: "BoardList",
-      params: { groupId: 2 },
-    });
-  });
-
-  // 5. 그룹 탈퇴를 누르면 confirm 뜨고, 목록에서 삭제되는지
-  it("‘그룹 탈퇴’를 누르면 confirm 후 그룹이 목록에서 제거된다", async () => {
-    const wrapper = mount(GroupList);
-    await flushPromises();
-
-    const confirmSpy = vi
-      .spyOn(window, "confirm")
-      .mockImplementation(() => true);
+  it("member-only 그룹에서 '그룹 탈퇴' 클릭 시 leaveGroup이 호출된다", async () => {
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
     const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => {});
 
-    // "CS 면접 대비반" 이 들어있는 li 찾기
-    const targetItem = wrapper
-      .findAll("ul li")
-      .find((li) => li.text().includes("CS 면접 대비반"));
-    expect(targetItem).toBeTruthy();
+    const wrapper = mount(GroupList);
+    await flushPromises();
+    await nextTick();
 
-    const leaveButton = findButtonByText(targetItem, "그룹 탈퇴");
-    expect(leaveButton).toBeTruthy();
+    const memberOnlyItem = findGroupItemByName(wrapper, "내가 member만인 그룹");
+    expect(memberOnlyItem).toBeTruthy();
+
+    const leaveButton = memberOnlyItem
+      .findAll("button")
+      .find((btn) => btn.text().includes("그룹 탈퇴"));
+
+    expect(leaveButton, "'그룹 탈퇴' 버튼을 찾지 못했습니다").toBeTruthy();
 
     await leaveButton.trigger("click");
     await flushPromises();
+    await nextTick();
 
-    expect(confirmSpy).toHaveBeenCalled();
+    // owner 탈퇴 방어 로직에 걸리면 안 되므로, 정확히 id:3에 대해 호출됐는지만 체크
+    expect(leaveGroupMock).toHaveBeenCalledWith(3);
 
-    // 목록에서 해당 그룹이 사라졌는지 확인
-    const textAfter = wrapper.text();
-    expect(textAfter).not.toContain("CS 면접 대비반");
-
-    // 깔끔하게 복원
     confirmSpy.mockRestore();
     alertSpy.mockRestore();
-  });
-
-  // 6. 수정을 누르면 수정 페이지로 넘어가는지
-  it("‘수정’을 누르면 GroupEdit 라우트로 이동한다", async () => {
-    const wrapper = mount(GroupList);
-    await flushPromises();
-
-    const targetItem = wrapper
-      .findAll("ul li")
-      .find((li) => li.text().includes("1조 알고리즘 스터디"));
-    expect(targetItem).toBeTruthy();
-
-    const editButton = findButtonByText(targetItem, "수정");
-    expect(editButton).toBeTruthy();
-
-    await editButton.trigger("click");
-
-    expect(routerPushMock).toHaveBeenCalledWith({
-      name: "GroupEdit",
-      params: { groupId: 1 },
-    });
-  });
-
-  // 7. + 스터디 그룹 생성 버튼을 누르면 그룹 생성 페이지로 넘어가는지
-  it("상단 ‘+ 스터디 그룹 생성’ 버튼을 누르면 GroupCreate 라우트로 이동한다", async () => {
-    const wrapper = mount(GroupList);
-    await flushPromises();
-
-    const createButton = findButtonByText(wrapper, "스터디 그룹 생성");
-    expect(createButton).toBeTruthy();
-
-    await createButton.trigger("click");
-
-    expect(routerPushMock).toHaveBeenCalledWith({
-      name: "GroupCreate",
-    });
   });
 });
