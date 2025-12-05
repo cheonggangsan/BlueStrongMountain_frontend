@@ -1,6 +1,7 @@
 <script setup>
-import { ref, watch } from "vue";
+import { ref, watch, computed } from "vue";
 import { useRouter } from "vue-router";
+
 // TODO: 실제 회원가입 API (ID/PW 기반)
 // import { signupWithIdPw, checkUsernameDuplicate } from "@/api/authApi";
 
@@ -8,6 +9,16 @@ import { useRouter } from "vue-router";
 import { mockSignup, mockCheckUsernameDuplicate } from "../api/mockAuthApi";
 
 const router = useRouter();
+
+const currentStep = ref(1); // 1: 약관 동의, 2: 회원가입 폼
+
+const agreeService = ref(false); // (필수) 서비스 이용약관
+const agreePrivacy = ref(false); // (필수) 개인정보 처리방침
+const agreeMarketing = ref(false); // (선택) 마케팅 수신 동의
+
+const canProceedTerms = computed(
+  () => agreeService.value && agreePrivacy.value,
+);
 
 const email = ref("");
 const nickname = ref("");
@@ -17,16 +28,23 @@ const passwordConfirm = ref("");
 const isSubmitting = ref(false);
 const errorMessage = ref("");
 
-// 닉네임 중복 확인용 상태
 const isCheckingNickname = ref(false);
 const nicknameCheckMessage = ref("");
 const isNicknameDuplicated = ref(null); // null: 아직 모름, true: 중복, false: 사용 가능
 
-// 닉네임이 바뀌면 이전 중복 확인 결과는 무효화
 watch(nickname, () => {
   isNicknameDuplicated.value = null;
   nicknameCheckMessage.value = "";
 });
+
+function goToFormStep() {
+  if (!canProceedTerms.value) {
+    errorMessage.value = "필수 약관에 모두 동의해 주세요.";
+    return;
+  }
+  errorMessage.value = "";
+  currentStep.value = 2;
+}
 
 async function handleCheckNickname() {
   nicknameCheckMessage.value = "";
@@ -134,10 +152,6 @@ function goToLogin() {
   <div
     class="min-h-screen bg-gradient-to-b from-yellow-50/70 via-white to-gray-50 text-gray-900 flex flex-col"
   >
-    <header class="w-full max-w-5xl mx-auto px-4 sm:px-6 pt-6">
-      <h1 class="text-xl font-semibold tracking-tight">BlueStrongMountain</h1>
-    </header>
-
     <main class="flex-1 flex items-center justify-center px-4 sm:px-6 pb-12">
       <div
         class="w-full max-w-md bg-white/80 backdrop-blur rounded-2xl shadow-sm border border-yellow-100/60 px-6 py-8 sm:px-8"
@@ -157,7 +171,89 @@ function goToLogin() {
           {{ errorMessage }}
         </p>
 
+        <!-- STEP 1: 약관 동의 -->
+        <div
+          v-if="currentStep === 1"
+          class="mt-6 space-y-4"
+        >
+          <div
+            class="border border-gray-200 rounded-xl bg-white/70 px-4 py-3 text-xs text-gray-700 max-h-64 overflow-y-auto"
+          >
+            <h3 class="text-sm font-semibold mb-2">
+              BlueStrongMountain 이용약관 (요약)
+            </h3>
+            <p class="mb-2">
+              아래 내용은 서비스 가입을 위해 꼭 확인해야 하는 필수 약관의
+              요약입니다. 자세한 내용은 향후 실제 약관 페이지로 연결할 수
+              있습니다.
+            </p>
+
+            <ul class="list-disc pl-4 space-y-1">
+              <li>
+                서비스 이용약관: 알고리즘 스터디 플랫폼 이용과 관련된 기본
+                권리·의무에 대한 내용입니다.
+              </li>
+              <li>
+                개인정보 처리방침: 회원가입 및 서비스 이용 과정에서 수집되는
+                최소한의 정보를 어떻게 보관·이용하는지에 대한 내용입니다.
+              </li>
+              <li>
+                선택 동의(마케팅 등): 새로운 기능/이벤트 안내 등을 위해 이메일
+                알림을 받을지에 대한 선택 동의입니다.
+              </li>
+            </ul>
+          </div>
+
+          <div class="space-y-2 text-xs text-gray-800">
+            <label class="flex items-start gap-2 cursor-pointer">
+              <input
+                v-model="agreeService"
+                type="checkbox"
+                class="mt-0.5 h-4 w-4 rounded border-gray-300 text-yellow-500 focus:ring-yellow-400"
+              />
+              <span>
+                [필수] BlueStrongMountain 서비스 이용약관에 동의합니다.
+              </span>
+            </label>
+
+            <label class="flex items-start gap-2 cursor-pointer">
+              <input
+                v-model="agreePrivacy"
+                type="checkbox"
+                class="mt-0.5 h-4 w-4 rounded border-gray-300 text-yellow-500 focus:ring-yellow-400"
+              />
+              <span> [필수] 개인정보 수집 및 이용에 동의합니다. </span>
+            </label>
+
+            <label class="flex items-start gap-2 cursor-pointer">
+              <input
+                v-model="agreeMarketing"
+                type="checkbox"
+                class="mt-0.5 h-4 w-4 rounded border-gray-300 text-yellow-500 focus:ring-yellow-400"
+              />
+              <span>
+                [선택] 새로운 기능/이벤트 등 마케팅 정보 수신에 동의합니다.
+              </span>
+            </label>
+
+            <p class="mt-2 text-[11px] text-gray-500">
+              선택 항목에 동의하지 않으셔도 서비스 이용에는 제한이 없습니다.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            class="mt-4 inline-flex w-full items-center justify-center rounded-lg bg-yellow-400 px-4 py-2.5 text-sm font-semibold text-gray-900 shadow-sm hover:bg-yellow-300 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+            :disabled="!canProceedTerms"
+            @click="goToFormStep"
+          >
+            약관에 동의하고 회원가입 진행
+          </button>
+        </div>
+
+        <!-- STEP 2: 실제 회원가입 폼 -->
         <form
+          v-else
           class="mt-6 space-y-4"
           @submit.prevent="handleSubmit"
         >
