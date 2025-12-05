@@ -101,10 +101,6 @@ function goToLogin() {
   <div
     class="min-h-screen bg-gradient-to-b from-yellow-50/70 via-white to-gray-50 text-gray-900 flex flex-col"
   >
-    <header class="w-full max-w-5xl mx-auto px-4 sm:px-6 pt-6">
-      <h1 class="text-xl font-semibold tracking-tight">BlueStrongMountain</h1>
-    </header>
-
     <main class="flex-1 flex items-center justify-center px-4 sm:px-6 pb-12">
       <div
         class="w-full max-w-md bg-white/80 backdrop-blur rounded-2xl shadow-sm border border-yellow-100/60 px-6 py-8 sm:px-8"
