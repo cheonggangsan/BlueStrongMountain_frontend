@@ -13,6 +13,7 @@ import ForgotPasswordView from "../views/ForgotPasswordView.vue";
 import ResetPasswordView from "../views/ResetPasswordView.vue";
 
 import MyPageView from "../views/MyPageView.vue";
+import BoardDetailView from "../views/BoardDetailView.vue";
 
 import { fetchGroupById } from "@/data/groupStore";
 import { useAuthStore } from "@/data/authStore";
@@ -85,6 +86,12 @@ const routes = [
     name: "BoardCreate",
     component: ProblemBoard,
     meta: { requiresAuth: true, requiresGroupManager: true },
+  },
+  {
+    path: "/groups/:groupId/boards/:boardId",
+    name: "BoardDetail",
+    component: BoardDetailView,
+    meta: { requiresAuth: true, requiresGroupMember: true },
   },
   {
     path: "/groups/:groupId/boards/:boardId/edit",
