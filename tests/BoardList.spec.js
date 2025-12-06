@@ -82,10 +82,18 @@ import {
   fetchBoards as fetchBoardsMock,
 } from "@/data/boardStore";
 import { fetchGroupById as fetchGroupByIdMock } from "@/data/groupStore";
+import { useAuthStore } from "@/data/authStore";
 
 describe("BoardList.vue", () => {
   beforeEach(() => {
     // 각 테스트 시작 전에 mock 상태 초기화
+    const auth = useAuthStore();
+    auth.user.value = {
+      id: 1,
+      name: "테스트 유저",
+    };
+    auth.isAuthenticated.value = true;
+
     boardsRef.value = [
       {
         id: 1,
@@ -230,5 +238,72 @@ describe("BoardList.vue", () => {
     expect(wrapper.text()).not.toContain("알고리즘 스터디 1차");
 
     confirmSpy.mockRestore();
+  });
+
+  it("권한이 없는 사용자는 보드 만들기/수정/삭제 버튼을 볼 수 없다", async () => {
+    // 🔁 authStore의 user를 owner/manager가 아닌 아이디로 변경
+    const auth = useAuthStore();
+    auth.user.value = { id: 999, name: "일반 유저" };
+
+    const wrapper = mount(BoardList);
+    await flushPromises();
+    await nextTick();
+
+    // 상단의 '+ 보드 만들기' 버튼이 없어야 함
+    const createButton = wrapper
+      .findAll("button")
+      .find((btn) => btn.text().includes("+ 보드 만들기"));
+    expect(createButton).toBeUndefined();
+
+    // 카드 안에 '수정', '삭제' 텍스트도 없어야 함
+    // (card 자체를 눌러 이동하는 버튼은 그대로 있음)
+    expect(wrapper.text()).not.toContain("수정");
+    expect(wrapper.text()).not.toContain("삭제");
+  });
+
+  it("지난 보드 탭에서는 수정 버튼이 표시되지 않고 삭제 버튼만 남는다", async () => {
+    const wrapper = mount(BoardList);
+    await flushPromises();
+    await nextTick();
+
+    // '지난 보드' 탭 클릭
+    const pastTabButton = wrapper
+      .findAll("button")
+      .find((btn) => btn.text().includes("지난 보드"));
+    await pastTabButton.trigger("click");
+    await flushPromises();
+    await nextTick();
+
+    const pastItem = wrapper.find("li.group");
+    expect(pastItem.exists()).toBe(true);
+
+    // 지난 보드 카드에는 '수정' 버튼이 없어야 함
+    const editBtn = pastItem
+      .findAll("button")
+      .find((btn) => btn.text().includes("수정"));
+    expect(editBtn).toBeUndefined();
+
+    // 대신 '삭제' 버튼은 있어야 함
+    const deleteBtn = pastItem
+      .findAll("button")
+      .find((btn) => btn.text().includes("삭제"));
+    expect(deleteBtn).toBeTruthy();
+  });
+
+  it("탭의 배지 숫자가 진행/지난 보드 개수와 일치한다", async () => {
+    const wrapper = mount(BoardList);
+    await flushPromises();
+    await nextTick();
+
+    const activeTabButton = wrapper
+      .findAll("button")
+      .find((btn) => btn.text().includes("진행 중인 보드"));
+    const pastTabButton = wrapper
+      .findAll("button")
+      .find((btn) => btn.text().includes("지난 보드"));
+
+    // boardsRef 초기값에서 진행중: 1개, 지난 보드: 1개
+    expect(activeTabButton.text()).toContain("1");
+    expect(pastTabButton.text()).toContain("1");
   });
 });
