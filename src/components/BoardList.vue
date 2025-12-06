@@ -82,6 +82,20 @@ function goEditBoard(id) {
   });
 }
 
+function goBoardDetail(id) {
+  router.push({
+    name: "BoardDetail",
+    params: {
+      groupId: route.params.groupId,
+      boardId: id,
+    },
+  });
+}
+
+function goGroupList() {
+  router.push({ name: "GroupList" });
+}
+
 async function handleDelete(id) {
   if (confirm("정말 이 보드를 삭제하시겠습니까?")) {
     deleteBoard(id);
@@ -92,6 +106,13 @@ async function handleDelete(id) {
 
 <template>
   <div class="p-4 max-w-3xl mx-auto">
+    <button
+      type="button"
+      class="mb-2 inline-flex items-center text-[11px] text-gray-400 hover:text-gray-600"
+      @click="goGroupList"
+    >
+      ← 보드 목록으로
+    </button>
     <div class="flex flex-col sm:flex-row justify-between gap-3 mb-6">
       <div class="relative flex-1">
         <div
@@ -193,44 +214,51 @@ async function handleDelete(id) {
       <li
         v-for="board in currentDisplayBoards"
         :key="board.id"
-        class="group flex justify-between items-start border rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition-shadow"
+        class="group flex justify-between items-center border rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition-shadow"
       >
-        <div class="flex-1 min-w-0 mr-4">
-          <div class="font-semibold text-gray-900 truncate text-base">
-            {{ board.title }}
-          </div>
-          <div class="mt-1.5 flex items-center text-xs text-gray-500 space-x-2">
-            <span
-              class="px-2 py-0.5 rounded"
-              :class="
-                currentTab === 'active'
-                  ? 'bg-green-100 text-green-800'
-                  : 'bg-red-100 text-red-800'
-              "
+        <button
+          type="button"
+          class="flex justify-between items-start w-full text-left"
+          @click="goBoardDetail(board.id)"
+        >
+          <div class="flex-1 min-w-0 mr-4">
+            <div class="font-semibold text-gray-900 truncate text-base">
+              {{ board.title }}
+            </div>
+            <div
+              class="mt-1.5 flex items-center text-xs text-gray-500 space-x-2"
             >
-              {{ currentTab === "active" ? "진행중" : "마감됨" }}
-            </span>
-            <span>
-              마감: {{ board.deadline ? board.deadline : "설정 안 함" }}
-            </span>
-            <span>·</span>
-            <span>문제 {{ board.problemsCount || 0 }}개</span>
+              <span
+                class="px-2 py-0.5 rounded"
+                :class="
+                  currentTab === 'active'
+                    ? 'bg-green-100 text-green-800'
+                    : 'bg-red-100 text-red-800'
+                "
+              >
+                {{ currentTab === "active" ? "진행중" : "마감됨" }}
+              </span>
+              <span>
+                마감: {{ board.deadline ? board.deadline : "설정 안 함" }}
+              </span>
+              <span>·</span>
+              <span>문제 {{ board.problemsCount || 0 }}개</span>
+            </div>
           </div>
-        </div>
-
+        </button>
         <div
           v-if="canManageBoards"
-          class="flex items-center space-x-2 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity"
+          class="flex flex-row items-center self-center gap-2 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity"
         >
           <button
             v-if="!isExpired(board.deadline)"
-            class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-2 focus:ring-offset-2 focus:ring-gray-200"
+            class="px-3 py-1.5 text-xs font-medium whitespace-nowrap text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-2 focus:ring-offset-2 focus:ring-gray-200"
             @click.stop="goEditBoard(board.id)"
           >
             수정
           </button>
           <button
-            class="px-3 py-1.5 text-xs font-medium text-white bg-red-500 border border-red-500 rounded-lg hover:bg-red-600 focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+            class="px-3 py-1.5 text-xs font-medium whitespace-nowrap text-white bg-red-500 border border-red-500 rounded-lg hover:bg-red-600 focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
             @click.stop="handleDelete(board.id)"
           >
             삭제
