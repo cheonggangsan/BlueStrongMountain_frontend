@@ -9,7 +9,7 @@ vi.mock("vue-router", () => ({
   }),
 }));
 
-import * as mockAuthApi from "../src/api/mockAuthApi";
+import * as mockAuthApi from "@/mocks/auth.mock";
 import ForgotPasswordView from "../src/views/ForgotPasswordView.vue";
 
 describe("ForgotPasswordView", () => {

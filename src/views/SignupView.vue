@@ -10,7 +10,7 @@ import {
   mockSignup,
   mockCheckUsernameDuplicate,
   mockCheckBaekjoonId,
-} from "../api/mockAuthApi";
+} from "@/mocks/auth.mock";
 
 const router = useRouter();
 

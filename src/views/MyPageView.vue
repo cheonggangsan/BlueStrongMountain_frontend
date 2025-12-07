@@ -15,7 +15,7 @@ import {
   mockCheckUsernameDuplicate,
   mockCheckBaekjoonId,
   mockUpdateBaekjoonId,
-} from "../api/mockAuthApi";
+} from "@/mocks/auth.mock";
 
 const router = useRouter();
 const authStore = useAuthStore();

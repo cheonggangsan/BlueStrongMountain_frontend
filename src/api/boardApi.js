@@ -1,7 +1,7 @@
 import httpClient from "./httpClient";
 
 // 방금 만든 목업 API
-import { mockGetBoardUserStatus } from "./mockBoardUserStatusApi";
+import { mockGetBoardUserStatus } from "@/mocks/boardUserStatus.mock";
 
 // 나중에 .env로 빼면 더 좋음
 const USE_MOCK = true;

@@ -6,7 +6,7 @@ import { useRouter } from "vue-router";
 // import { forgotPassword } from "../api/authApi";
 
 // TODO: 지금은 mock 사용 (백엔드 붙기 전까지)
-import { mockForgotPassword } from "../api/mockAuthApi";
+import { mockForgotPassword } from "@/mocks/auth.mock";
 
 const router = useRouter();
 

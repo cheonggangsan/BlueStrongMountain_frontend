@@ -38,7 +38,7 @@ vi.mock("@/data/authStore", () => {
 // =======================
 // 2) mockAuthApi 실제 모듈 import 후 spy
 // =======================
-import * as mockAuthApi from "@/api/mockAuthApi";
+import * as mockAuthApi from "@/mocks/auth.mock";
 import MyPageView from "@/views/MyPageView.vue";
 
 // 프로필 단계로 강제 진입시키는 헬퍼
