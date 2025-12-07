@@ -3,10 +3,14 @@ import { ref, watch, computed } from "vue";
 import { useRouter } from "vue-router";
 
 // TODO: 실제 회원가입 API (ID/PW 기반)
-// import { signupWithIdPw, checkUsernameDuplicate } from "@/api/authApi";
+// import { signupWithIdPw, checkUsernameDuplicate, verifyBaekjoonId } from "@/api/authApi";
 
 // TODO: TODO: mock 버전
-import { mockSignup, mockCheckUsernameDuplicate } from "../api/mockAuthApi";
+import {
+  mockSignup,
+  mockCheckUsernameDuplicate,
+  mockCheckBaekjoonId,
+} from "../api/mockAuthApi";
 
 const router = useRouter();
 
@@ -21,12 +25,17 @@ const canProceedTerms = computed(
 );
 
 const email = ref("");
+const baekjoonId = ref("");
 const nickname = ref("");
 const password = ref("");
 const passwordConfirm = ref("");
 
 const isSubmitting = ref(false);
 const errorMessage = ref("");
+
+const isCheckingBaekjoon = ref(false);
+const baekjoonCheckMessage = ref("");
+const isBaekjoonValid = ref(null); // null: 아직 모름, true: 존재, false: 없음
 
 const isCheckingNickname = ref(false);
 const nicknameCheckMessage = ref("");
@@ -35,6 +44,11 @@ const isNicknameDuplicated = ref(null); // null: 아직 모름, true: 중복, fa
 watch(nickname, () => {
   isNicknameDuplicated.value = null;
   nicknameCheckMessage.value = "";
+});
+
+watch(baekjoonId, () => {
+  isBaekjoonValid.value = null;
+  baekjoonCheckMessage.value = "";
 });
 
 function goToFormStep() {
@@ -88,11 +102,59 @@ async function handleCheckNickname() {
   }
 }
 
+async function handleCheckBaekjoonId() {
+  baekjoonCheckMessage.value = "";
+  isBaekjoonValid.value = null;
+
+  const handle = baekjoonId.value.trim();
+  if (!handle) {
+    baekjoonCheckMessage.value = "백준 아이디를 먼저 입력해주세요.";
+    return;
+  }
+
+  isCheckingBaekjoon.value = true;
+
+  try {
+    // TODO: 지금은 mock, 나중에 서버 API로 교체
+    const res = await mockCheckBaekjoonId({ handle });
+    // 가정: { exists: boolean }
+    if (res.exists) {
+      isBaekjoonValid.value = true;
+      baekjoonCheckMessage.value = "존재하는 백준 아이디입니다.";
+    } else {
+      isBaekjoonValid.value = false;
+      baekjoonCheckMessage.value =
+        "존재하지 않는 백준 아이디입니다. 다시 확인해주세요.";
+    }
+
+    // TODO: 실제 API 예시
+    // const res = await verifyBaekjoonId({ handle });
+    // isBaekjoonValid.value = res.exists;
+  } catch (e) {
+    console.error(e);
+    isBaekjoonValid.value = null;
+    baekjoonCheckMessage.value =
+      "백준 아이디 확인 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
+  } finally {
+    isCheckingBaekjoon.value = false;
+  }
+}
+
 function validate() {
   errorMessage.value = "";
 
   if (!email.value.trim() || !nickname.value.trim()) {
     errorMessage.value = "이메일과 닉네임을 모두 입력해주세요.";
+    return false;
+  }
+
+  if (!baekjoonId.value.trim()) {
+    errorMessage.value = "백준 아이디를 입력해주세요.";
+    return false;
+  }
+
+  if (isBaekjoonValid.value !== true) {
+    errorMessage.value = "백준 아이디가 존재하는지 확인 버튼을 눌러주세요.";
     return false;
   }
 
@@ -125,6 +187,7 @@ async function handleSubmit() {
       email: email.value,
       nickname: nickname.value,
       password: password.value,
+      baekjoonId: baekjoonId.value,
     });
 
     // TODO: 2) 나중: 실제 API
@@ -132,6 +195,7 @@ async function handleSubmit() {
     //   email: email.value,
     //   nickname: nickname.value,
     //   password: password.value,
+    //   baekjoonId: baekjoonId.value,
     // });
 
     router.push({ name: "Login" });
@@ -273,6 +337,44 @@ function goToLogin() {
               class="block w-full rounded-lg border border-gray-200 bg-white/70 px-3 py-2 text-sm shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400"
               placeholder="you@example.com"
             />
+          </div>
+
+          <div>
+            <label
+              for="baekjoon-id"
+              class="block text-sm font-medium text-gray-700 mb-1"
+            >
+              백준 아이디
+            </label>
+            <div class="flex gap-2">
+              <input
+                id="baekjoon-id"
+                v-model="baekjoonId"
+                type="text"
+                autocomplete="off"
+                required
+                class="flex-1 rounded-lg border border-gray-200 bg-white/70 px-3 py-2 text-sm shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400"
+                placeholder="백준 온라인 저지 아이디"
+              />
+              <button
+                type="button"
+                class="shrink-0 rounded-lg border border-gray-300 bg-white/80 px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-100 disabled:opacity-60 disabled:cursor-not-allowed"
+                :disabled="isCheckingBaekjoon || !baekjoonId.trim()"
+                @click="handleCheckBaekjoonId"
+              >
+                <span v-if="!isCheckingBaekjoon">아이디 확인</span>
+                <span v-else>확인 중...</span>
+              </button>
+            </div>
+            <p
+              v-if="baekjoonCheckMessage"
+              class="mt-1 text-xs"
+              :class="
+                isBaekjoonValid === true ? 'text-green-600' : 'text-red-600'
+              "
+            >
+              {{ baekjoonCheckMessage }}
+            </p>
           </div>
 
           <div>
