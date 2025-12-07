@@ -47,6 +47,8 @@ async function goToProfileStep(wrapper, overrides = {}) {
   wrapper.vm.email = overrides.email ?? "user@example.com";
   wrapper.vm.nickname = overrides.nickname ?? "oldNick";
   wrapper.vm.originalNickname = overrides.originalNickname ?? "oldNick";
+  wrapper.vm.baekjoonId = overrides.baekjoonId ?? "";
+  wrapper.vm.originalBaekjoonId = overrides.originalBaekjoonId ?? "";
   await nextTick();
 }
 
@@ -110,13 +112,14 @@ describe("MyPageView.vue", () => {
     expect(verifySpy).not.toHaveBeenCalled();
   });
 
-  it("올바른 비밀번호 입력 시 mockVerifyPassword 호출 후 프로필 단계로 전환된다", async () => {
+  it("올바른 비밀번호 입력 시 mockVerifyPassword 호출 후 프로필 단계로 전환되고, 이메일/닉네임/백준 아이디가 세팅된다", async () => {
     const verifySpy = vi
       .spyOn(mockAuthApi, "mockVerifyPassword")
       .mockResolvedValue({
         user: {
           email: "me@example.com",
           nickname: "myNick",
+          baekjoonId: "tourist",
         },
       });
 
@@ -140,6 +143,9 @@ describe("MyPageView.vue", () => {
 
     const nicknameInput = wrapper.get("#mypage-nickname");
     expect(nicknameInput.element.value).toBe("myNick");
+
+    const baekjoonInput = wrapper.get("#mypage-baekjoon-id");
+    expect(baekjoonInput.element.value).toBe("tourist");
   });
 
   it("비밀번호가 틀리면 에러 메시지를 보여준다", async () => {
@@ -272,6 +278,231 @@ describe("MyPageView.vue", () => {
     expect(g.fetchCurrentUserMock).toHaveBeenCalledWith({ force: true });
     expect(wrapper.text()).toContain("닉네임이 변경되었습니다.");
   });
+
+  // ============================
+  // 백준 아이디 관련 테스트
+  // ============================
+
+  it("백준 아이디 입력이 없으면 '아이디 확인' 버튼이 비활성화되고 mockCheckBaekjoonId를 호출하지 않는다", async () => {
+    const checkSpy = vi
+      .spyOn(mockAuthApi, "mockCheckBaekjoonId")
+      .mockResolvedValue({ exists: true });
+
+    const wrapper = mount(MyPageView);
+    await flushPromises();
+
+    // 프로필 단계 & 백준 아이디 없음으로 세팅
+    await goToProfileStep(wrapper, {
+      baekjoonId: "",
+      originalBaekjoonId: "",
+    });
+
+    // "아이디 수정" 눌러서 편집 모드 진입
+    const editBtn = wrapper
+      .findAll("button")
+      .find((b) => b.text().includes("아이디 수정"));
+    await editBtn.trigger("click");
+    await flushPromises();
+
+    // "아이디 확인" 버튼 찾기
+    const checkBtn = wrapper
+      .findAll("button")
+      .find((b) => b.text().includes("아이디 확인"));
+
+    // 입력이 없으므로 버튼이 비활성화되어 있어야 한다
+    expect(checkBtn.element.disabled).toBe(true);
+
+    // 클릭해도 실제 API는 호출되지 않아야 한다
+    await checkBtn.trigger("click");
+    await flushPromises();
+
+    expect(checkSpy).not.toHaveBeenCalled();
+  });
+
+  it("현재 등록된 백준 아이디와 동일한 값을 확인하면 API 호출 없이 유효 처리한다", async () => {
+    const checkSpy = vi
+      .spyOn(mockAuthApi, "mockCheckBaekjoonId")
+      .mockResolvedValue({ exists: true });
+
+    const wrapper = mount(MyPageView);
+    await flushPromises();
+    await goToProfileStep(wrapper, {
+      baekjoonId: "tourist",
+      originalBaekjoonId: "tourist",
+    });
+
+    const editBtn = wrapper
+      .findAll("button")
+      .find((b) => b.text().includes("아이디 수정"));
+    await editBtn.trigger("click");
+    await flushPromises();
+
+    const checkBtn = wrapper
+      .findAll("button")
+      .find((b) => b.text().includes("아이디 확인"));
+    await checkBtn.trigger("click");
+    await flushPromises();
+
+    expect(checkSpy).not.toHaveBeenCalled();
+    expect(wrapper.text()).toContain("현재 등록된 백준 아이디입니다.");
+  });
+
+  it("존재하는 백준 아이디라면 아이디 확인 시 성공 메시지를 보여준다", async () => {
+    const checkSpy = vi
+      .spyOn(mockAuthApi, "mockCheckBaekjoonId")
+      .mockResolvedValue({ exists: true });
+
+    const wrapper = mount(MyPageView);
+    await flushPromises();
+    await goToProfileStep(wrapper, {
+      baekjoonId: "",
+      originalBaekjoonId: "",
+    });
+
+    const editBtn = wrapper
+      .findAll("button")
+      .find((b) => b.text().includes("아이디 수정"));
+    await editBtn.trigger("click");
+    await flushPromises();
+
+    await wrapper.get("#mypage-baekjoon-id").setValue("tourist");
+
+    const checkBtn = wrapper
+      .findAll("button")
+      .find((b) => b.text().includes("아이디 확인"));
+    await checkBtn.trigger("click");
+    await flushPromises();
+
+    expect(checkSpy).toHaveBeenCalledWith({ handle: "tourist" });
+    expect(wrapper.text()).toContain("존재하는 백준 아이디입니다.");
+  });
+
+  it("백준 아이디 확인 없이 저장 시 에러를 보여주고 mockUpdateBaekjoonId를 호출하지 않는다", async () => {
+    const updateSpy = vi
+      .spyOn(mockAuthApi, "mockUpdateBaekjoonId")
+      .mockResolvedValue({
+        user: {
+          email: "user@example.com",
+          nickname: "oldNick",
+          baekjoonId: "tourist",
+        },
+      });
+
+    const wrapper = mount(MyPageView);
+    await flushPromises();
+    await goToProfileStep(wrapper, {
+      baekjoonId: "",
+      originalBaekjoonId: "",
+    });
+
+    const editBtn = wrapper
+      .findAll("button")
+      .find((b) => b.text().includes("아이디 수정"));
+    await editBtn.trigger("click");
+    await flushPromises();
+
+    await wrapper.get("#mypage-baekjoon-id").setValue("tourist");
+
+    const saveBtn = wrapper
+      .findAll("button")
+      .find((b) => b.text().includes("저장"));
+    await saveBtn.trigger("click");
+    await flushPromises();
+
+    expect(wrapper.text()).toContain(
+      "백준 아이디가 실제로 존재하는지 확인 버튼을 눌러주세요.",
+    );
+    expect(updateSpy).not.toHaveBeenCalled();
+  });
+
+  it("백준 아이디 확인 후 저장 시 mockUpdateBaekjoonId와 fetchCurrentUser를 호출한다", async () => {
+    const g = globalThis.__authMocks;
+
+    const checkSpy = vi
+      .spyOn(mockAuthApi, "mockCheckBaekjoonId")
+      .mockResolvedValue({ exists: true });
+
+    const updateSpy = vi
+      .spyOn(mockAuthApi, "mockUpdateBaekjoonId")
+      .mockResolvedValue({
+        user: {
+          email: "user@example.com",
+          nickname: "oldNick",
+          baekjoonId: "tourist",
+        },
+      });
+
+    const wrapper = mount(MyPageView);
+    await flushPromises();
+    await goToProfileStep(wrapper, {
+      baekjoonId: "",
+      originalBaekjoonId: "",
+    });
+
+    const editBtn = wrapper
+      .findAll("button")
+      .find((b) => b.text().includes("아이디 수정"));
+    await editBtn.trigger("click");
+    await flushPromises();
+
+    await wrapper.get("#mypage-baekjoon-id").setValue("tourist");
+
+    const checkBtn = wrapper
+      .findAll("button")
+      .find((b) => b.text().includes("아이디 확인"));
+    await checkBtn.trigger("click");
+    await flushPromises();
+
+    const saveBtn = wrapper
+      .findAll("button")
+      .find((b) => b.text().includes("저장"));
+    await saveBtn.trigger("click");
+    await flushPromises();
+
+    expect(checkSpy).toHaveBeenCalledWith({ handle: "tourist" });
+    expect(updateSpy).toHaveBeenCalledWith({ baekjoonId: "tourist" });
+    expect(g.fetchCurrentUserMock).toHaveBeenCalledWith({ force: true });
+    expect(wrapper.text()).toContain("백준 아이디가 변경되었습니다.");
+  });
+
+  it("백준 아이디를 빈 문자열로 저장하려 하면 에러를 보여주고 mockUpdateBaekjoonId를 호출하지 않는다", async () => {
+    const updateSpy = vi
+      .spyOn(mockAuthApi, "mockUpdateBaekjoonId")
+      .mockResolvedValue({
+        user: {
+          email: "user@example.com",
+          nickname: "oldNick",
+          baekjoonId: "",
+        },
+      });
+
+    const wrapper = mount(MyPageView);
+    await flushPromises();
+    await goToProfileStep(wrapper, {
+      baekjoonId: "tourist",
+      originalBaekjoonId: "tourist",
+    });
+
+    const editBtn = wrapper
+      .findAll("button")
+      .find((b) => b.text().includes("아이디 수정"));
+    await editBtn.trigger("click");
+    await flushPromises();
+
+    await wrapper.get("#mypage-baekjoon-id").setValue("");
+    const saveBtn = wrapper
+      .findAll("button")
+      .find((b) => b.text().includes("저장"));
+    await saveBtn.trigger("click");
+    await flushPromises();
+
+    expect(wrapper.text()).toContain("백준 아이디를 비울 수 없습니다.");
+    expect(updateSpy).not.toHaveBeenCalled();
+  });
+
+  // ============================
+  // 비밀번호 / 탈퇴 기존 테스트
+  // ============================
 
   it("비밀번호 변경에서 8자 미만이면 에러를 보여주고 mockChangePassword를 호출하지 않는다", async () => {
     const changeSpy = vi
