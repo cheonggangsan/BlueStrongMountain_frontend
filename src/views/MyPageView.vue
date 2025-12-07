@@ -13,6 +13,8 @@ import {
   mockChangePassword,
   mockDeleteAccount,
   mockCheckUsernameDuplicate,
+  mockCheckBaekjoonId,
+  mockUpdateBaekjoonId,
 } from "../api/mockAuthApi";
 
 const router = useRouter();
@@ -32,6 +34,15 @@ const verifyLoading = ref(false);
 const email = ref("");
 const nickname = ref("");
 const originalNickname = ref("");
+const baekjoonId = ref("");
+const originalBaekjoonId = ref("");
+
+// 백준 아이디 수정 상태
+const isEditingBaekjoonId = ref(false);
+const isSavingBaekjoonId = ref(false);
+const isCheckingBaekjoonId = ref(false);
+const baekjoonCheckMessage = ref("");
+const isBaekjoonValid = ref(null); // null: 모름, true: 존재, false: 없음
 
 // 닉네임 수정 상태
 const isEditingNickname = ref(false);
@@ -45,6 +56,13 @@ watch(nickname, () => {
   if (!isEditingNickname.value) return;
   isNicknameDuplicated.value = null;
   nicknameCheckMessage.value = "";
+});
+
+// 백준 아이디가 바뀌면 검증 결과는 무효화
+watch(baekjoonId, () => {
+  if (!isEditingBaekjoonId.value) return;
+  isBaekjoonValid.value = null;
+  baekjoonCheckMessage.value = "";
 });
 
 // ===== 3영역: 비밀번호 변경 =====
@@ -100,6 +118,8 @@ async function handleVerifyPassword() {
     email.value = user.email;
     nickname.value = user.nickname;
     originalNickname.value = user.nickname;
+    baekjoonId.value = user.baekjoonId || "";
+    originalBaekjoonId.value = user.baekjoonId || "";
 
     step.value = "profile";
     verifyPasswordInput.value = "";
@@ -232,6 +252,113 @@ async function handleSaveNickname() {
     console.log(e);
   } finally {
     isSavingNickname.value = false;
+  }
+}
+
+// ===== 백준 아이디 확인 =====
+async function handleCheckBaekjoonId() {
+  baekjoonCheckMessage.value = "";
+  isBaekjoonValid.value = null;
+
+  const handle = baekjoonId.value.trim();
+  if (!handle) {
+    baekjoonCheckMessage.value = "백준 아이디를 먼저 입력해주세요.";
+    return;
+  }
+
+  // 지금 등록된 아이디와 동일하면 그냥 유효로 처리
+  if (handle === (originalBaekjoonId.value || "")) {
+    isBaekjoonValid.value = true;
+    baekjoonCheckMessage.value = "현재 등록된 백준 아이디입니다.";
+    return;
+  }
+
+  isCheckingBaekjoonId.value = true;
+
+  try {
+    // TODO: 실제 백엔드로 교체 예정
+    const res = await mockCheckBaekjoonId({ handle });
+    if (res.exists) {
+      isBaekjoonValid.value = true;
+      baekjoonCheckMessage.value = "존재하는 백준 아이디입니다.";
+    } else {
+      isBaekjoonValid.value = false;
+      baekjoonCheckMessage.value =
+        "존재하지 않는 백준 아이디입니다. 다시 확인해주세요.";
+    }
+  } catch (e) {
+    console.error(e);
+    isBaekjoonValid.value = null;
+    baekjoonCheckMessage.value =
+      "백준 아이디 확인 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
+  } finally {
+    isCheckingBaekjoonId.value = false;
+  }
+}
+
+function startEditBaekjoonId() {
+  isEditingBaekjoonId.value = true;
+  baekjoonCheckMessage.value = "";
+  isBaekjoonValid.value = null;
+}
+
+function cancelEditBaekjoonId() {
+  isEditingBaekjoonId.value = false;
+  baekjoonId.value = originalBaekjoonId.value || "";
+  baekjoonCheckMessage.value = "";
+  isBaekjoonValid.value = null;
+}
+
+// ===== 백준 아이디 저장 =====
+async function handleSaveBaekjoonId() {
+  globalError.value = "";
+  globalMessage.value = "";
+
+  const value = baekjoonId.value.trim();
+
+  if (!value) {
+    globalError.value = "백준 아이디를 비울 수 없습니다.";
+    return;
+  }
+
+  // 변경 없으면 그냥 종료
+  if (value === (originalBaekjoonId.value || "")) {
+    isEditingBaekjoonId.value = false;
+    baekjoonCheckMessage.value = "";
+    isBaekjoonValid.value = null;
+    return;
+  }
+
+  // 존재하지 않는 아이디면 막기
+  if (isBaekjoonValid.value !== true) {
+    globalError.value =
+      "백준 아이디가 실제로 존재하는지 확인 버튼을 눌러주세요.";
+    return;
+  }
+
+  isSavingBaekjoonId.value = true;
+
+  try {
+    // TODO: 실제 서버 API로 전환 예정
+    const res = await mockUpdateBaekjoonId({ baekjoonId: value });
+    const user = res.user;
+
+    baekjoonId.value = user.baekjoonId || "";
+    originalBaekjoonId.value = user.baekjoonId || "";
+
+    isEditingBaekjoonId.value = false;
+    baekjoonCheckMessage.value = "";
+    isBaekjoonValid.value = null;
+    globalMessage.value = "백준 아이디가 변경되었습니다.";
+
+    // 헤더/전역 상태 동기화
+    await authStore.fetchCurrentUser({ force: true });
+  } catch (e) {
+    globalError.value =
+      "백준 아이디를 변경하는 중 문제가 발생했습니다. 잠시 후 다시 시도해주세요.";
+    console.log(e);
+  } finally {
+    isSavingBaekjoonId.value = false;
   }
 }
 
@@ -440,6 +567,78 @@ async function handleDeleteAccount() {
                   <span>{{ email }}</span>
                   <span class="text-[11px] text-gray-400"> 로그인 ID </span>
                 </div>
+              </div>
+
+              <div>
+                <label
+                  for="mypage-baekjoon-id"
+                  class="block text-xs font-medium text-gray-500 mb-1"
+                >
+                  백준 아이디
+                </label>
+
+                <div class="flex gap-2 items-center">
+                  <input
+                    id="mypage-baekjoon-id"
+                    v-model="baekjoonId"
+                    :disabled="!isEditingBaekjoonId"
+                    type="text"
+                    class="flex-1 rounded-lg border border-gray-200 bg-white/70 px-3 py-2 text-sm shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 disabled:bg-gray-50 disabled:text-gray-500"
+                    placeholder="백준 온라인 저지 아이디"
+                  />
+                  <button
+                    v-if="!isEditingBaekjoonId"
+                    type="button"
+                    class="shrink-0 rounded-lg border border-gray-300 bg-white/80 px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-100"
+                    @click="startEditBaekjoonId"
+                  >
+                    아이디 수정
+                  </button>
+                </div>
+
+                <!-- 백준 아이디 수정 모드 -->
+                <div
+                  v-if="isEditingBaekjoonId"
+                  class="mt-2 flex flex-wrap items-center gap-2"
+                >
+                  <button
+                    type="button"
+                    class="rounded-lg border border-gray-300 bg-white/80 px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-100 disabled:opacity-60 disabled:cursor-not-allowed"
+                    :disabled="isCheckingBaekjoonId || !baekjoonId.trim()"
+                    @click="handleCheckBaekjoonId"
+                  >
+                    <span v-if="!isCheckingBaekjoonId">아이디 확인</span>
+                    <span v-else>확인 중...</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    class="rounded-lg bg-yellow-400 px-3 py-1.5 text-xs font-semibold text-gray-900 shadow-sm hover:bg-yellow-300 disabled:opacity-60 disabled:cursor-not-allowed"
+                    :disabled="isSavingBaekjoonId"
+                    @click="handleSaveBaekjoonId"
+                  >
+                    <span v-if="!isSavingBaekjoonId">저장</span>
+                    <span v-else>저장 중...</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    class="rounded-lg border border-transparent px-2 py-1 text-xs text-gray-500 hover:text-gray-700"
+                    @click="cancelEditBaekjoonId"
+                  >
+                    취소
+                  </button>
+                </div>
+
+                <p
+                  v-if="baekjoonCheckMessage"
+                  class="mt-1 text-xs"
+                  :class="
+                    isBaekjoonValid === true ? 'text-green-600' : 'text-red-600'
+                  "
+                >
+                  {{ baekjoonCheckMessage }}
+                </p>
               </div>
 
               <div>
