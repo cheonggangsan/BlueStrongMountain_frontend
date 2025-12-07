@@ -1,17 +1,5 @@
-// - 지금은 mockAuthApi 기반으로 동작
-// - 나중에 실제 백엔드(/auth/login, /members/me 등) 붙일 때는
-//   아래 TODO 부분만 바꿔주면 됨
-
 import { reactive, computed, readonly } from "vue";
-// TODO: 실제 백엔드 붙일 때 사용
-import { loginWithIdPw, logout as apiLogout } from "@/api/authApi";
-
-// 지금은 mock 기반
-import { mockLogin, mockLogout, mockGetCurrentUser } from "@/mocks/auth.mock";
-
-// 나중에는 .env로 빼서 제어하는 게 베스트:
-// const USE_MOCK_AUTH = import.meta.env.VITE_USE_MOCK_AUTH === "true";
-const USE_MOCK_AUTH = true;
+import { authService } from "@/services/authService";
 
 const state = reactive({
   user: null, // { id, email, nickname, ... }
@@ -32,29 +20,13 @@ function clearUser() {
 /**
  * 로그인
  * @param {{ id: string, password: string }} credentials
- *   - mock: id를 email로 사용
- *   - 실제: 백엔드 규칙대로 id/email 중 하나
  */
 async function login(credentials) {
   state.isLoading = true;
   state.error = null;
 
   try {
-    let user;
-
-    if (USE_MOCK_AUTH) {
-      // ===== 지금: mock 로그인 (email + password) =====
-      const { user: mockUser } = await mockLogin({
-        email: credentials.id,
-        password: credentials.password,
-      });
-      user = mockUser;
-    } else {
-      // ===== 나중: 실제 백엔드 로그인 =====
-      const data = await loginWithIdPw(credentials);
-      user = data.user ?? data;
-    }
-
+    const user = await authService.login(credentials);
     setUser(user);
     return user;
   } catch (err) {
@@ -74,8 +46,6 @@ async function login(credentials) {
 /**
  * 현재 로그인 사용자 동기화
  * - 앱 첫 로딩 / 새로고침 이후에 호출
- * - 실제 서비스에서는 /members/me 같은 API를 쓰고,
- *   지금은 mockGetCurrentUser(localStorage)로 대체
  */
 async function fetchCurrentUser({ force = false } = {}) {
   if (state.initialized && !force) return;
@@ -84,17 +54,7 @@ async function fetchCurrentUser({ force = false } = {}) {
   state.error = null;
 
   try {
-    let user = null;
-
-    if (USE_MOCK_AUTH) {
-      // mock: localStorage에서 복원
-      user = mockGetCurrentUser();
-    } else {
-      // 실제: /members/me 등에서 가져오기
-      // const me = await getMyProfile();
-      // user = me;
-    }
-
+    const user = await authService.fetchCurrentUser();
     setUser(user);
   } catch (err) {
     console.error("[authStore] fetchCurrentUser error:", err);
@@ -113,11 +73,7 @@ async function logout() {
   state.error = null;
 
   try {
-    if (USE_MOCK_AUTH) {
-      mockLogout();
-    } else {
-      await apiLogout();
-    }
+    await authService.logout();
   } catch (err) {
     console.error("[authStore] logout error:", err);
   } finally {
