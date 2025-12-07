@@ -44,7 +44,7 @@ const MOCK_GROUPS = [
 
 const LOCAL_GROUP_DB = ref([...MOCK_GROUPS]);
 
-export async function fetchGroups() {
+export async function mockFetchGroups() {
   return new Promise((resolve) => {
     setTimeout(() => {
       groups.value = [...LOCAL_GROUP_DB.value];
@@ -60,7 +60,7 @@ export async function fetchGroups() {
  *   DELETE /api/v1/groups/{groupId}/members/me
  * 같은 엔드포인트를 호출하면 됩니다.
  */
-export async function leaveGroup(groupId) {
+export async function mockLeaveGroup(groupId) {
   const numericId = Number(groupId);
 
   // 1) Mock DB에서 제거
@@ -77,7 +77,7 @@ export async function leaveGroup(groupId) {
 
 // 새 그룹 생성 (POST /api/v1/groups mock)
 // 실제 백엔드 붙일 땐 이 함수 안에서 axios.post("/api/v1/groups", payload)로 교체.
-export async function createGroup(payload) {
+export async function mockCreateGroup(payload) {
   // payload 형태:
   // {
   //   title: "청강산 1기 알고리즘 캠프",
@@ -123,7 +123,7 @@ export async function createGroup(payload) {
 }
 
 // 그룹 하나 상세 조회 (GET /api/v1/groups/{groupId} mock)
-export async function fetchGroupById(groupId) {
+export async function mockFetchGroupById(groupId) {
   const numericId = Number(groupId);
   const found = LOCAL_GROUP_DB.value.find((g) => g.id === numericId);
 
@@ -141,7 +141,7 @@ export async function fetchGroupById(groupId) {
 }
 
 // 그룹 수정 (PUT /api/v1/groups/{groupId} mock)
-export async function updateGroup(groupId, payload) {
+export async function mockUpdateGroup(groupId, payload) {
   // payload:
   // { title, description, visibility, managerIds, memberIds }
   const numericId = Number(groupId);
@@ -178,7 +178,10 @@ export async function updateGroup(groupId, payload) {
   return updated;
 }
 
-export async function changeGroupOwner(groupId, { requesterId, newOwnerId }) {
+export async function mockChangeGroupOwner(
+  groupId,
+  { requesterId, newOwnerId },
+) {
   const numericId = Number(groupId);
   const index = LOCAL_GROUP_DB.value.findIndex((g) => g.id === numericId);
 
