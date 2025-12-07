@@ -69,8 +69,34 @@ export async function mockCheckUsernameDuplicate({ username }) {
   };
 }
 
+/**
+ * 백준 아이디 존재 여부 확인 mock
+ *   - 실제 서비스에서는 서버에서 Baekjoon 또는 solved.ac API를 호출해서
+ *     존재 여부를 판별할 예정.
+ *   - 지금은 단순 규칙으로:
+ *     - handle가 "unknown", "notfound" 이면 없는 계정으로 처리
+ *     - 그 외는 있는 계정으로 가정
+ */
+export async function mockCheckBaekjoonId({ handle }) {
+  await delay(300);
+
+  const trimmed = (handle || "").trim();
+  if (!trimmed) {
+    return { exists: false };
+  }
+
+  const lower = trimmed.toLowerCase();
+  const invalidList = ["unknown", "notfound", "invalid"];
+
+  const exists = !invalidList.includes(lower);
+
+  return {
+    exists,
+  };
+}
+
 // ===== 회원가입 (ID/PW 기반) =====
-export async function mockSignup({ email, nickname, password }) {
+export async function mockSignup({ email, nickname, password, baekjoonId }) {
   await delay(500);
 
   const users = loadUsers();
@@ -87,6 +113,7 @@ export async function mockSignup({ email, nickname, password }) {
     email,
     nickname,
     password, // ⚠️ 실제 프로덕션에서는 평문 저장 금지 (BCrypt 등 사용)
+    baekjoonId,
   };
 
   const nextUsers = [...users, newUser];
@@ -98,6 +125,7 @@ export async function mockSignup({ email, nickname, password }) {
       id: newUser.id,
       email: newUser.email,
       nickname: newUser.nickname,
+      baekjoonId: newUser.baekjoonId,
     },
   };
 
@@ -280,6 +308,7 @@ export async function mockVerifyPassword({ password }) {
       id: user.id,
       email: user.email,
       nickname: user.nickname,
+      baekjoonId: user.baekjoonId,
     },
   };
 }
@@ -324,6 +353,51 @@ export async function mockUpdateNickname({ nickname }) {
       id: users[idx].id,
       email: users[idx].email,
       nickname: users[idx].nickname,
+    },
+  };
+}
+
+export async function mockUpdateBaekjoonId({ baekjoonId }) {
+  await delay(400);
+
+  const current = mockGetCurrentUser();
+  if (!current) {
+    const error = new Error("로그인 상태가 아닙니다.");
+    error.code = "NOT_LOGGED_IN";
+    throw error;
+  }
+
+  const users = loadUsers();
+  const idx = users.findIndex((u) => u.id === current.id);
+
+  if (idx === -1) {
+    const error = new Error("사용자를 찾을 수 없습니다.");
+    error.code = "USER_NOT_FOUND";
+    throw error;
+  }
+
+  users[idx].baekjoonId = baekjoonId;
+  saveUsers(users);
+
+  // currentUser 캐시도 최신 백준 아이디로 업데이트
+  if (typeof window !== "undefined") {
+    window.localStorage.setItem(
+      STORAGE_KEY_CURRENT_USER,
+      JSON.stringify({
+        id: users[idx].id,
+        email: users[idx].email,
+        nickname: users[idx].nickname,
+        baekjoonId: users[idx].baekjoonId,
+      }),
+    );
+  }
+
+  return {
+    user: {
+      id: users[idx].id,
+      email: users[idx].email,
+      nickname: users[idx].nickname,
+      baekjoonId: users[idx].baekjoonId,
     },
   };
 }

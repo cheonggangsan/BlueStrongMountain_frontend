@@ -45,6 +45,34 @@ export async function checkUsernameDuplicate({ username }) {
 }
 
 /**
+ * 백엔드에서 Baekjoon 프로필 존재 여부 확인
+ * GET /api/v1/baekjoon/verify?handle=xxx
+ */
+export async function verifyBaekjoonId({ handle }) {
+  const response = await httpClient.get("/v1/baekjoon/verify", {
+    params: { handle },
+  });
+
+  // 예시 응답: { exists: true }
+  return response.data;
+}
+
+/**
+ * 내 계정에 연결된 Baekjoon 아이디 저장/수정
+ * PATCH /api/v1/members/me/baekjoon-id
+ *  - body: { baekjoonId: "handle" }
+ *  - 실제 엔드포인트는 백엔드 설계에 맞게 변경하면 됨
+ */
+export async function updateBaekjoonId({ baekjoonId }) {
+  const response = await httpClient.patch("/v1/members/me/baekjoon-id", {
+    baekjoonId,
+  });
+
+  // 예시 응답: { user: { ..., baekjoonId: "xxx" } } 또는 { ok: true }
+  return response.data;
+}
+
+/**
  * 로그아웃 (세션 기반)
  */
 export async function logout() {
