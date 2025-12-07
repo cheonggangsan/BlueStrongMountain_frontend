@@ -7,7 +7,7 @@ import { reactive, computed, readonly } from "vue";
 import { loginWithIdPw, logout as apiLogout } from "@/api/authApi";
 
 // 지금은 mock 기반
-import { mockLogin, mockLogout, mockGetCurrentUser } from "@/api/mockAuthApi";
+import { mockLogin, mockLogout, mockGetCurrentUser } from "@/mocks/auth.mock";
 
 // 나중에는 .env로 빼서 제어하는 게 베스트:
 // const USE_MOCK_AUTH = import.meta.env.VITE_USE_MOCK_AUTH === "true";

@@ -15,7 +15,7 @@ vi.mock("vue-router", () => ({
   }),
 }));
 
-import * as mockAuthApi from "../src/api/mockAuthApi";
+import * as mockAuthApi from "@/mocks/auth.mock";
 import ResetPasswordView from "../src/views/ResetPasswordView.vue";
 
 describe("ResetPasswordView", () => {

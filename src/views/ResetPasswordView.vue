@@ -6,7 +6,7 @@ import { useRoute, useRouter } from "vue-router";
 // import { resetPassword } from "../api/authApi";
 
 // TODO: 지금은 mock 사용
-import { mockResetPassword } from "../api/mockAuthApi";
+import { mockResetPassword } from "@/mocks/auth.mock";
 
 const route = useRoute();
 const router = useRouter();

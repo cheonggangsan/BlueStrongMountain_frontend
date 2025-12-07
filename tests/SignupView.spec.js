@@ -9,7 +9,7 @@ vi.mock("vue-router", () => ({
   }),
 }));
 
-import * as mockAuthApi from "@/api/mockAuthApi";
+import * as mockAuthApi from "@/mocks/auth.mock";
 import SignupView from "@/views/SignupView.vue";
 
 async function goToFormStep(wrapper) {
