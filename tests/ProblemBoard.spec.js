@@ -3,7 +3,7 @@ import { mount } from "@vue/test-utils";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { nextTick } from "vue";
 import ProblemBoard from "../src/components/ProblemBoard.vue";
-import * as api from "../src/api/problemApi";
+import { problemService } from "@/services/problemService";
 
 // 1) vue-router mock
 vi.mock("vue-router", () => ({
@@ -31,7 +31,7 @@ describe("ProblemBoard.vue", () => {
   it("게시 버튼 클릭 시 postBoard 를 올바른 payload 로 호출한다", async () => {
     // postBoard 모킹
     const mockPost = vi
-      .spyOn(api, "postBoard")
+      .spyOn(problemService, "postBoard")
       .mockResolvedValue({ id: 999, success: true });
 
     const wrapper = mount(ProblemBoard, {
