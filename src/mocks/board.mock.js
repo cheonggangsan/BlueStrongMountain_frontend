@@ -1,5 +1,5 @@
 import { ref } from "vue";
-import { MOCK_PROBLEMS } from "/src/api/problemApi";
+import { MOCK_PROBLEMS } from "@/mocks/problem.mock";
 
 export const boards = ref([]); // 처음엔 빈 배열
 

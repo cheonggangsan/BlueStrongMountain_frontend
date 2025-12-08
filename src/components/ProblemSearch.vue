@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed } from "vue";
 import SearchFilters from "./search/SearchFilters.vue";
-import { searchWithConditions } from "../api/problemApi";
+import { problemService } from "@/services/problemService";
 
 const emit = defineEmits(["add-problem"]);
 
@@ -74,7 +74,7 @@ async function handleFiltersSearch(filter) {
 
     if (!hasAnyCondition) {
       // 조건이 하나도 없을 때: 기본 전체 검색
-      baseResults = await searchWithConditions({
+      baseResults = await problemService.searchWithConditions({
         difficultyFrom: undefined,
         difficultyTo: undefined,
         tag: "",
@@ -85,7 +85,7 @@ async function handleFiltersSearch(filter) {
       });
     } else if (hasProblemNo) {
       // 문제 번호를 입력한 경우: 번호 + 나머지 조건
-      const candidates = await searchWithConditions({
+      const candidates = await problemService.searchWithConditions({
         difficultyFrom: hasDifficultyRange ? filter.difficultyFrom : undefined,
         difficultyTo: hasDifficultyRange ? filter.difficultyTo : undefined,
         tag: "",
@@ -107,7 +107,7 @@ async function handleFiltersSearch(filter) {
       }
     } else {
       // 번호는 없고, 나머지 조건 검색
-      baseResults = await searchWithConditions({
+      baseResults = await problemService.searchWithConditions({
         difficultyFrom: hasDifficultyRange ? filter.difficultyFrom : undefined,
         difficultyTo: hasDifficultyRange ? filter.difficultyTo : undefined,
         tag: "",
