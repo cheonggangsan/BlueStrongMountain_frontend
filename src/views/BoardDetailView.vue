@@ -5,7 +5,7 @@ import { useAuthStore } from "../data/authStore";
 import { fetchBoardById } from "../data/boardStore";
 import { fetchGroupById } from "../data/groupStore";
 import { members } from "../data/memberStore";
-import { getBoardUserStatus } from "../api/boardApi";
+import { getBoardUserStatus } from "@/data/boardStore";
 
 const route = useRoute();
 const router = useRouter();

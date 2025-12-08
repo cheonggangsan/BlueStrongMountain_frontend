@@ -58,15 +58,12 @@ vi.mock("@/data/groupStore", () => {
 // =======================
 vi.mock("@/data/boardStore", () => {
   const fetchBoardById = vi.fn();
-  return { fetchBoardById };
-});
-
-// =======================
-// 6) boardApi mock
-// =======================
-vi.mock("@/api/boardApi", () => {
   const getBoardUserStatus = vi.fn();
-  return { getBoardUserStatus };
+
+  return {
+    fetchBoardById,
+    getBoardUserStatus,
+  };
 });
 
 // =======================
@@ -77,7 +74,7 @@ import { useAuthStore as useAuthStoreMock } from "@/data/authStore";
 import { members as membersRef } from "@/data/memberStore";
 import { fetchGroupById as fetchGroupByIdMock } from "@/data/groupStore";
 import { fetchBoardById as fetchBoardByIdMock } from "@/data/boardStore";
-import { getBoardUserStatus as getBoardUserStatusMock } from "@/api/boardApi";
+import { getBoardUserStatus as getBoardUserStatusMock } from "@/data/boardStore";
 
 // 공통 더미 데이터
 const sampleGroup = {
