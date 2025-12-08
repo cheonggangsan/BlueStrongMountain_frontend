@@ -1,4 +1,3 @@
-// src/services/boardService.js
 import { apiMode } from "@/config/apiMode";
 import * as boardApi from "@/api/boardApi";
 import {
