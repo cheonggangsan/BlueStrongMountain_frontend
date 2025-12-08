@@ -4,7 +4,7 @@ import { useRouter, useRoute } from "vue-router";
 import ProblemSearch from "./ProblemSearch.vue";
 import BoardHeader from "./board/BoardHeader.vue";
 import SelectedProblemsPanel from "./board/SelectedProblemsPanel.vue";
-import { postBoard } from "../api/problemApi";
+import { problemService } from "@/services/problemService";
 import {
   addBoard,
   updateBoard,
@@ -104,7 +104,7 @@ async function handlePost() {
     };
 
     // API 호출 (실제 백엔드는 payload를 저장)
-    const res = await postBoard(payload);
+    const res = await problemService.postBoard(payload);
     postResult.value = res;
 
     const groupId = Number(route.params.groupId);
