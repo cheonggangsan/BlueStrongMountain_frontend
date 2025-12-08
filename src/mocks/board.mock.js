@@ -139,7 +139,7 @@ export function mockUpdateBoard(updatedBoard) {
  * GET /api/v1/boards/{boardId}
  * 특정 보드의 상세 정보를 가져옵니다. (Mocking)
  */
-export async function fetchBoardById(id) {
+export async function mockFetchBoardById(id) {
   const board = LOCAL_DB.value.find((b) => b.id == id);
 
   return new Promise((resolve, reject) => {
