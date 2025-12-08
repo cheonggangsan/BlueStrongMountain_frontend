@@ -1,7 +1,7 @@
 import { mount } from "@vue/test-utils";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import ProblemSearch from "../src/components/ProblemSearch.vue";
-import * as api from "../src/api/problemApi";
+import { problemService } from "@/services/problemService";
 
 describe("ProblemSearch.vue", () => {
   beforeEach(() => {
@@ -18,7 +18,9 @@ describe("ProblemSearch.vue", () => {
       acceptedUserCount: 10,
     };
 
-    vi.spyOn(api, "searchWithConditions").mockResolvedValue([problem]);
+    vi.spyOn(problemService, "searchWithConditions").mockResolvedValue([
+      problem,
+    ]);
 
     const wrapper = mount(ProblemSearch);
 
