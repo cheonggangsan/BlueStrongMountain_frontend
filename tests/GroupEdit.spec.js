@@ -26,9 +26,12 @@ vi.mock("../src/data/memberStore", () => {
     ],
   };
 
+  const ensureMembersLoaded = vi.fn(() => Promise.resolve());
+
   return {
     __esModule: true,
     members,
+    ensureMembersLoaded,
   };
 });
 
