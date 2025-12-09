@@ -7,7 +7,7 @@ import {
   updateGroup,
   changeGroupOwner,
 } from "../../data/groupStore";
-import { members } from "../../data/memberStore";
+import { members, ensureMembersLoaded } from "../../data/memberStore";
 import { useAuthStore } from "../../data/authStore";
 
 const router = useRouter();
@@ -71,7 +71,10 @@ const selectedNewOwner = computed(() => {
 });
 
 onMounted(async () => {
+  loading.value = true;
   try {
+    await ensureMembersLoaded(1000);
+
     const g = await fetchGroupById(groupId);
     group.value = g;
 

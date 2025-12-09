@@ -4,7 +4,7 @@ import { useRoute, useRouter } from "vue-router";
 import { useAuthStore } from "../data/authStore";
 import { fetchBoardById } from "../data/boardStore";
 import { fetchGroupById } from "../data/groupStore";
-import { members } from "../data/memberStore";
+import { members, ensureMembersLoaded } from "@/data/memberStore";
 import { getBoardUserStatus } from "@/data/boardStore";
 
 const route = useRoute();
@@ -137,7 +137,8 @@ onMounted(async () => {
     const groupId = route.params.groupId;
     const boardId = route.params.boardId;
 
-    const [g, b, s] = await Promise.all([
+    const [, g, b, s] = await Promise.all([
+      ensureMembersLoaded(1000),
       fetchGroupById(groupId),
       fetchBoardById(boardId),
       getBoardUserStatus(groupId, boardId),

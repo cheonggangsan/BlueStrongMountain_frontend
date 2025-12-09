@@ -3,4 +3,5 @@ export const apiMode = {
   group: import.meta.env.VITE_API_MODE_GROUP ?? "mock",
   board: import.meta.env.VITE_API_MODE_BOARD ?? "mock",
   problem: import.meta.env.VITE_API_MODE_PROBLEM ?? "mock",
+  member: import.meta.env.VITE_API_MODE_MEMBER ?? "mock",
 };

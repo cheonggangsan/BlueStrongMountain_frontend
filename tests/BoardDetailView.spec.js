@@ -42,7 +42,9 @@ vi.mock("@/data/memberStore", () => {
     { id: 3, name: "집에갈까요", nickname: "campChoi" },
   ]);
 
-  return { members };
+  const ensureMembersLoaded = vi.fn(() => Promise.resolve());
+
+  return { members, ensureMembersLoaded };
 });
 
 // =======================
