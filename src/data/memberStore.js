@@ -13,6 +13,16 @@ export async function initMembers(limit = 10) {
 }
 
 /**
+ * 필요할 때 한 번만 멤버 로딩
+ */
+export async function ensureMembersLoaded(limit = 1000) {
+  if (members.value.length > 0) {
+    return members.value;
+  }
+  return initMembers(limit);
+}
+
+/**
  * 멤버 검색
  */
 export async function searchMembers(keyword) {
