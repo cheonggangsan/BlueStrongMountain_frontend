@@ -36,9 +36,21 @@ vi.mock("@/data/authStore", () => {
 });
 
 // =======================
-// 2) mockAuthApi 실제 모듈 import 후 spy
+// 2) authService mock
 // =======================
-import * as mockAuthApi from "@/mocks/auth.mock";
+vi.mock("@/services/authService", () => ({
+  authService: {
+    verifyPassword: vi.fn(),
+    checkUsernameDuplicate: vi.fn(),
+    updateNickname: vi.fn(),
+    checkBaekjoonId: vi.fn(),
+    updateBaekjoonId: vi.fn(),
+    changePassword: vi.fn(),
+    deleteAccount: vi.fn(),
+  },
+}));
+
+import { authService } from "@/services/authService";
 import MyPageView from "@/views/MyPageView.vue";
 
 // 프로필 단계로 강제 진입시키는 헬퍼
@@ -92,9 +104,8 @@ describe("MyPageView.vue", () => {
   });
 
   it("비밀번호 재확인에서 8자 미만이면 에러를 보여주고 API를 호출하지 않는다", async () => {
-    const verifySpy = vi
-      .spyOn(mockAuthApi, "mockVerifyPassword")
-      .mockResolvedValue({});
+    const verifySpy = authService.verifyPassword;
+    verifySpy.mockResolvedValue({});
 
     const wrapper = mount(MyPageView);
     await flushPromises();
@@ -112,16 +123,15 @@ describe("MyPageView.vue", () => {
     expect(verifySpy).not.toHaveBeenCalled();
   });
 
-  it("올바른 비밀번호 입력 시 mockVerifyPassword 호출 후 프로필 단계로 전환되고, 이메일/닉네임/백준 아이디가 세팅된다", async () => {
-    const verifySpy = vi
-      .spyOn(mockAuthApi, "mockVerifyPassword")
-      .mockResolvedValue({
-        user: {
-          email: "me@example.com",
-          nickname: "myNick",
-          baekjoonId: "tourist",
-        },
-      });
+  it("올바른 비밀번호 입력 시 authService.verifyPassword 호출 후 프로필 단계로 전환되고, 이메일/닉네임/백준 아이디가 세팅된다", async () => {
+    const verifySpy = authService.verifyPassword;
+    verifySpy.mockResolvedValue({
+      user: {
+        email: "me@example.com",
+        nickname: "myNick",
+        baekjoonId: "tourist",
+      },
+    });
 
     const wrapper = mount(MyPageView);
     await flushPromises();
@@ -149,9 +159,8 @@ describe("MyPageView.vue", () => {
   });
 
   it("비밀번호가 틀리면 에러 메시지를 보여준다", async () => {
-    const verifySpy = vi
-      .spyOn(mockAuthApi, "mockVerifyPassword")
-      .mockRejectedValue({ code: "INVALID_PASSWORD" });
+    const verifySpy = authService.verifyPassword;
+    verifySpy.mockRejectedValue({ code: "INVALID_PASSWORD" });
 
     const wrapper = mount(MyPageView);
     await flushPromises();
@@ -169,12 +178,11 @@ describe("MyPageView.vue", () => {
   });
 
   it("닉네임 중복 확인에서 사용 가능한 닉네임이면 메시지를 표시한다", async () => {
-    const checkSpy = vi
-      .spyOn(mockAuthApi, "mockCheckUsernameDuplicate")
-      .mockResolvedValue({
-        duplicated: false,
-        available: true,
-      });
+    const checkSpy = authService.checkUsernameDuplicate;
+    checkSpy.mockResolvedValue({
+      duplicated: false,
+      available: true,
+    });
 
     const wrapper = mount(MyPageView);
     await flushPromises();
@@ -200,15 +208,14 @@ describe("MyPageView.vue", () => {
     expect(wrapper.text()).toContain("사용 가능한 닉네임입니다.");
   });
 
-  it("닉네임 중복 확인 없이 저장 시 에러를 보여주고 mockUpdateNickname을 호출하지 않는다", async () => {
-    const updateSpy = vi
-      .spyOn(mockAuthApi, "mockUpdateNickname")
-      .mockResolvedValue({
-        user: {
-          email: "user@example.com",
-          nickname: "newNick",
-        },
-      });
+  it("닉네임 중복 확인 없이 저장 시 에러를 보여주고 authService.updateNickname을 호출하지 않는다", async () => {
+    const updateSpy = authService.updateNickname;
+    updateSpy.mockResolvedValue({
+      user: {
+        email: "user@example.com",
+        nickname: "newNick",
+      },
+    });
 
     const wrapper = mount(MyPageView);
     await flushPromises();
@@ -231,24 +238,22 @@ describe("MyPageView.vue", () => {
     expect(updateSpy).not.toHaveBeenCalled();
   });
 
-  it("닉네임 중복 확인 후 저장 시 mockUpdateNickname과 fetchCurrentUser를 호출한다", async () => {
+  it("닉네임 중복 확인 후 저장 시 authService.checkUsernameDuplicate과 authService.updateNickname를 호출한다", async () => {
     const g = globalThis.__authMocks;
 
-    const checkSpy = vi
-      .spyOn(mockAuthApi, "mockCheckUsernameDuplicate")
-      .mockResolvedValue({
-        duplicated: false,
-        available: true,
-      });
+    const checkSpy = authService.checkUsernameDuplicate;
+    checkSpy.mockResolvedValue({
+      duplicated: false,
+      available: true,
+    });
 
-    const updateSpy = vi
-      .spyOn(mockAuthApi, "mockUpdateNickname")
-      .mockResolvedValue({
-        user: {
-          email: "user@example.com",
-          nickname: "newNick",
-        },
-      });
+    const updateSpy = authService.updateNickname;
+    updateSpy.mockResolvedValue({
+      user: {
+        email: "user@example.com",
+        nickname: "newNick",
+      },
+    });
 
     const wrapper = mount(MyPageView);
     await flushPromises();
@@ -283,10 +288,9 @@ describe("MyPageView.vue", () => {
   // 백준 아이디 관련 테스트
   // ============================
 
-  it("백준 아이디 입력이 없으면 '아이디 확인' 버튼이 비활성화되고 mockCheckBaekjoonId를 호출하지 않는다", async () => {
-    const checkSpy = vi
-      .spyOn(mockAuthApi, "mockCheckBaekjoonId")
-      .mockResolvedValue({ exists: true });
+  it("백준 아이디 입력이 없으면 '아이디 확인' 버튼이 비활성화되고 authService.checkBaekjoonId를 호출하지 않는다", async () => {
+    const checkSpy = authService.checkBaekjoonId;
+    checkSpy.mockResolvedValue({ exists: true });
 
     const wrapper = mount(MyPageView);
     await flushPromises();
@@ -320,9 +324,8 @@ describe("MyPageView.vue", () => {
   });
 
   it("현재 등록된 백준 아이디와 동일한 값을 확인하면 API 호출 없이 유효 처리한다", async () => {
-    const checkSpy = vi
-      .spyOn(mockAuthApi, "mockCheckBaekjoonId")
-      .mockResolvedValue({ exists: true });
+    const checkSpy = authService.checkBaekjoonId;
+    checkSpy.mockResolvedValue({ exists: true });
 
     const wrapper = mount(MyPageView);
     await flushPromises();
@@ -348,9 +351,8 @@ describe("MyPageView.vue", () => {
   });
 
   it("존재하는 백준 아이디라면 아이디 확인 시 성공 메시지를 보여준다", async () => {
-    const checkSpy = vi
-      .spyOn(mockAuthApi, "mockCheckBaekjoonId")
-      .mockResolvedValue({ exists: true });
+    const checkSpy = authService.checkBaekjoonId;
+    checkSpy.mockResolvedValue({ exists: true });
 
     const wrapper = mount(MyPageView);
     await flushPromises();
@@ -377,16 +379,15 @@ describe("MyPageView.vue", () => {
     expect(wrapper.text()).toContain("존재하는 백준 아이디입니다.");
   });
 
-  it("백준 아이디 확인 없이 저장 시 에러를 보여주고 mockUpdateBaekjoonId를 호출하지 않는다", async () => {
-    const updateSpy = vi
-      .spyOn(mockAuthApi, "mockUpdateBaekjoonId")
-      .mockResolvedValue({
-        user: {
-          email: "user@example.com",
-          nickname: "oldNick",
-          baekjoonId: "tourist",
-        },
-      });
+  it("백준 아이디 확인 없이 저장 시 에러를 보여주고 authService.updateBaekjoonId를 호출하지 않는다", async () => {
+    const updateSpy = authService.updateBaekjoonId;
+    updateSpy.mockResolvedValue({
+      user: {
+        email: "user@example.com",
+        nickname: "oldNick",
+        baekjoonId: "tourist",
+      },
+    });
 
     const wrapper = mount(MyPageView);
     await flushPromises();
@@ -415,22 +416,20 @@ describe("MyPageView.vue", () => {
     expect(updateSpy).not.toHaveBeenCalled();
   });
 
-  it("백준 아이디 확인 후 저장 시 mockUpdateBaekjoonId와 fetchCurrentUser를 호출한다", async () => {
+  it("백준 아이디 확인 후 저장 시 authService.checkBaekjoonId와 fetchCurrentUser를 호출한다", async () => {
     const g = globalThis.__authMocks;
 
-    const checkSpy = vi
-      .spyOn(mockAuthApi, "mockCheckBaekjoonId")
-      .mockResolvedValue({ exists: true });
+    const checkSpy = authService.checkBaekjoonId;
+    checkSpy.mockResolvedValue({ exists: true });
 
-    const updateSpy = vi
-      .spyOn(mockAuthApi, "mockUpdateBaekjoonId")
-      .mockResolvedValue({
-        user: {
-          email: "user@example.com",
-          nickname: "oldNick",
-          baekjoonId: "tourist",
-        },
-      });
+    const updateSpy = authService.updateBaekjoonId;
+    updateSpy.mockResolvedValue({
+      user: {
+        email: "user@example.com",
+        nickname: "oldNick",
+        baekjoonId: "tourist",
+      },
+    });
 
     const wrapper = mount(MyPageView);
     await flushPromises();
@@ -465,16 +464,15 @@ describe("MyPageView.vue", () => {
     expect(wrapper.text()).toContain("백준 아이디가 변경되었습니다.");
   });
 
-  it("백준 아이디를 빈 문자열로 저장하려 하면 에러를 보여주고 mockUpdateBaekjoonId를 호출하지 않는다", async () => {
-    const updateSpy = vi
-      .spyOn(mockAuthApi, "mockUpdateBaekjoonId")
-      .mockResolvedValue({
-        user: {
-          email: "user@example.com",
-          nickname: "oldNick",
-          baekjoonId: "",
-        },
-      });
+  it("백준 아이디를 빈 문자열로 저장하려 하면 에러를 보여주고 authService.updateBaekjoonId를 호출하지 않는다", async () => {
+    const updateSpy = authService.updateBaekjoonId;
+    updateSpy.mockResolvedValue({
+      user: {
+        email: "user@example.com",
+        nickname: "oldNick",
+        baekjoonId: "",
+      },
+    });
 
     const wrapper = mount(MyPageView);
     await flushPromises();
@@ -504,10 +502,9 @@ describe("MyPageView.vue", () => {
   // 비밀번호 / 탈퇴 기존 테스트
   // ============================
 
-  it("비밀번호 변경에서 8자 미만이면 에러를 보여주고 mockChangePassword를 호출하지 않는다", async () => {
-    const changeSpy = vi
-      .spyOn(mockAuthApi, "mockChangePassword")
-      .mockResolvedValue({});
+  it("비밀번호 변경에서 8자 미만이면 에러를 보여주고 authService.changePassword를 호출하지 않는다", async () => {
+    const changeSpy = authService.changePassword;
+    changeSpy.mockResolvedValue({});
 
     const wrapper = mount(MyPageView);
     await flushPromises();
@@ -533,12 +530,11 @@ describe("MyPageView.vue", () => {
     expect(changeSpy).not.toHaveBeenCalled();
   });
 
-  it("비밀번호 변경 성공 시 mockChangePassword와 logout을 호출하고 Login으로 이동한다", async () => {
+  it("비밀번호 변경 성공 시 authService.changePassword와 logout을 호출하고 Login으로 이동한다", async () => {
     const g = globalThis.__authMocks;
 
-    const changeSpy = vi
-      .spyOn(mockAuthApi, "mockChangePassword")
-      .mockResolvedValue({});
+    const changeSpy = authService.changePassword;
+    changeSpy.mockResolvedValue({});
 
     const wrapper = mount(MyPageView);
     await flushPromises();
@@ -571,12 +567,11 @@ describe("MyPageView.vue", () => {
     });
   });
 
-  it("회원 탈퇴 확인 후 mockDeleteAccount와 logout을 호출하고 Home으로 이동한다", async () => {
+  it("회원 탈퇴 확인 후 authService.deleteAccount와 logout을 호출하고 Home으로 이동한다", async () => {
     const g = globalThis.__authMocks;
 
-    const deleteSpy = vi
-      .spyOn(mockAuthApi, "mockDeleteAccount")
-      .mockResolvedValue({});
+    const deleteSpy = authService.deleteAccount;
+    deleteSpy.mockResolvedValue({});
 
     const wrapper = mount(MyPageView);
     await flushPromises();
