@@ -1,12 +1,7 @@
 <script setup>
 import { ref, computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
-
-// TODO: 나중에 실제 백엔드 붙일 때 쓸 API
-// import { resetPassword } from "../api/authApi";
-
-// TODO: 지금은 mock 사용
-import { mockResetPassword } from "@/mocks/auth.mock";
+import { authService } from "@/services/authService";
 
 const route = useRoute();
 const router = useRouter();
@@ -53,36 +48,10 @@ async function handleSubmit() {
   successMessage.value = "";
 
   try {
-    /**
-     * TODO: ================================
-     * 1) 지금: mock API 호출
-     * ================================
-     * localStorage에 저장된 resetTokens에서 토큰 검증 후
-     * 해당 유저의 password를 교체하는 방식.
-     */
-    await mockResetPassword({
+    await authService.resetPassword({
       token: token.value,
       newPassword: password.value,
     });
-
-    /** TODO:
-     * ================================
-     * 2) 나중: 실제 백엔드 연동
-     * ================================
-     * 백엔드에서 /auth/reset-password 같은 엔드포인트를 제공한다고 가정.
-     *
-     * await resetPassword({
-     *   token: token.value,
-     *   newPassword: password.value,
-     * });
-     *
-     * // 기대 응답:
-     * // { ok: true } 또는 { ok: true, message: "비밀번호 변경 완료" }
-     *
-     * 서버에서는 토큰 유효성/만료 여부를 확인하고,
-     * 비밀번호를 해싱(BCrypt/Argon2 등)해서 저장한 뒤
-     * 기존 세션/토큰을 모두 무효화해야 함.
-     */
 
     successMessage.value =
       "비밀번호가 변경되었습니다. 새 비밀번호로 다시 로그인해 주세요.";

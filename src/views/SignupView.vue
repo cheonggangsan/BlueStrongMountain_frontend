@@ -1,16 +1,7 @@
 <script setup>
 import { ref, watch, computed } from "vue";
 import { useRouter } from "vue-router";
-
-// TODO: 실제 회원가입 API (ID/PW 기반)
-// import { signupWithIdPw, checkUsernameDuplicate, verifyBaekjoonId } from "@/api/authApi";
-
-// TODO: TODO: mock 버전
-import {
-  mockSignup,
-  mockCheckUsernameDuplicate,
-  mockCheckBaekjoonId,
-} from "@/mocks/auth.mock";
+import { authService } from "@/services/authService";
 
 const router = useRouter();
 
@@ -73,8 +64,7 @@ async function handleCheckNickname() {
   isCheckingNickname.value = true;
 
   try {
-    //TODO: change this code to actually api code
-    const res = await mockCheckUsernameDuplicate({ username: value });
+    const res = await authService.checkUsernameDuplicate({ username: value });
 
     const duplicated =
       res.duplicated ??
@@ -88,10 +78,6 @@ async function handleCheckNickname() {
       isNicknameDuplicated.value = false;
       nicknameCheckMessage.value = "사용 가능한 닉네임입니다.";
     }
-
-    //TODO: change upper code to this code for actual API
-    // const res = await checkUsernameDuplicate({ username: value });
-    // const duplicated = res.duplicated; // 응답 형식에 맞게 수정
   } catch (e) {
     isNicknameDuplicated.value = null;
     nicknameCheckMessage.value =
@@ -115,8 +101,7 @@ async function handleCheckBaekjoonId() {
   isCheckingBaekjoon.value = true;
 
   try {
-    // TODO: 지금은 mock, 나중에 서버 API로 교체
-    const res = await mockCheckBaekjoonId({ handle });
+    const res = await authService.checkBaekjoonId({ handle });
     // 가정: { exists: boolean }
     if (res.exists) {
       isBaekjoonValid.value = true;
@@ -126,10 +111,6 @@ async function handleCheckBaekjoonId() {
       baekjoonCheckMessage.value =
         "존재하지 않는 백준 아이디입니다. 다시 확인해주세요.";
     }
-
-    // TODO: 실제 API 예시
-    // const res = await verifyBaekjoonId({ handle });
-    // isBaekjoonValid.value = res.exists;
   } catch (e) {
     console.error(e);
     isBaekjoonValid.value = null;
@@ -182,21 +163,12 @@ async function handleSubmit() {
 
   isSubmitting.value = true;
   try {
-    // TODO: 1) 지금: mock + ID/PW
-    await mockSignup({
+    await authService.signup({
       email: email.value,
       nickname: nickname.value,
       password: password.value,
       baekjoonId: baekjoonId.value,
     });
-
-    // TODO: 2) 나중: 실제 API
-    // await signupWithIdPw({
-    //   email: email.value,
-    //   nickname: nickname.value,
-    //   password: password.value,
-    //   baekjoonId: baekjoonId.value,
-    // });
 
     router.push({ name: "Login" });
   } catch (e) {
