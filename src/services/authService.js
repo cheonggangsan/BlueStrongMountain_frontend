@@ -30,21 +30,21 @@ const USE_MOCK_AUTH = apiMode.auth === "mock";
 export const authService = {
   /**
    * 로그인
-   * @param {{ id: string, password: string }} credentials
+   * @param {{ email: string, password: string }} credentials
    */
-  async login({ id, password }) {
+  async login({ email, password }) {
     if (USE_MOCK_AUTH) {
       // mock: email + password 기반
       const { user: mockUser } = await mockLogin({
-        email: id,
+        email,
         password,
       });
       return mockUser;
     }
 
     // real: 백엔드 /auth/login
-    const data = await loginWithIdPw({ id, password });
-    return data.user ?? data;
+    const { user } = await loginWithIdPw({ email, password });
+    return user;
   },
 
   /**

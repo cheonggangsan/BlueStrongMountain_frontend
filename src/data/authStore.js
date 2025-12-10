@@ -19,7 +19,7 @@ function clearUser() {
 
 /**
  * 로그인
- * @param {{ id: string, password: string }} credentials
+ * @param {{ email: string, password: string }} credentials
  */
 async function login(credentials) {
   state.isLoading = true;

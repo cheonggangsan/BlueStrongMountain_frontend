@@ -41,9 +41,8 @@ async function handleSubmit() {
   auth.resetError();
 
   try {
-    // authStore가 내부에서 mockLogin(or 나중에 loginWithIdPw)을 호출
     await auth.login({
-      id: email.value, // mock에서는 email로 사용
+      email: email.value,
       password: password.value,
     });
 

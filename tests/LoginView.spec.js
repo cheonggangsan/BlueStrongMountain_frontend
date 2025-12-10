@@ -88,7 +88,7 @@ describe("LoginView", () => {
 
     // LoginView가 authStore.login을 어떻게 부르는지 그대로 검증
     expect(authStore.login).toHaveBeenCalledWith({
-      id: "test@example.com", // LoginView에서 id로 넘기고 있음
+      email: "test@example.com", // LoginView에서 id로 넘기고 있음
       password: "password123",
     });
 
