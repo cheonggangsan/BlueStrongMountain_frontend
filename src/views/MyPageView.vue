@@ -2,20 +2,7 @@
 import { ref, watch, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/data/authStore";
-
-// TODO: 실제 API 전환 시 사용할 예시 (지금은 mock만 사용)
-// import { verifyPassword, changePassword } from "@/api/authApi";
-// import { updateMyProfile, deleteMyAccount, getMyProfile, getMyGroupSummary } from "@/api/memberApi";
-
-import {
-  mockVerifyPassword,
-  mockUpdateNickname,
-  mockChangePassword,
-  mockDeleteAccount,
-  mockCheckUsernameDuplicate,
-  mockCheckBaekjoonId,
-  mockUpdateBaekjoonId,
-} from "@/mocks/auth.mock";
+import { authService } from "@/services/authService";
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -111,8 +98,7 @@ async function handleVerifyPassword() {
 
   verifyLoading.value = true;
   try {
-    // TODO: 지금은 mock 사용
-    const res = await mockVerifyPassword({ password: pwd });
+    const res = await authService.verifyPassword({ password: pwd });
 
     const user = res.user;
     email.value = user.email;
@@ -159,8 +145,7 @@ async function handleCheckNickname() {
   isCheckingNickname.value = true;
 
   try {
-    // TODO: 실제 API 전환 시 checkUsernameDuplicate 사용
-    const res = await mockCheckUsernameDuplicate({ username: value });
+    const res = await authService.checkUsernameDuplicate({ username: value });
 
     const duplicated =
       res.duplicated ??
@@ -232,8 +217,7 @@ async function handleSaveNickname() {
   isSavingNickname.value = true;
 
   try {
-    // TODO: 지금은 mock 사용
-    const res = await mockUpdateNickname({ nickname: value });
+    const res = await authService.updateNickname({ nickname: value });
     const user = res.user;
 
     nickname.value = user.nickname;
@@ -276,8 +260,7 @@ async function handleCheckBaekjoonId() {
   isCheckingBaekjoonId.value = true;
 
   try {
-    // TODO: 실제 백엔드로 교체 예정
-    const res = await mockCheckBaekjoonId({ handle });
+    const res = await authService.checkBaekjoonId({ handle });
     if (res.exists) {
       isBaekjoonValid.value = true;
       baekjoonCheckMessage.value = "존재하는 백준 아이디입니다.";
@@ -339,8 +322,7 @@ async function handleSaveBaekjoonId() {
   isSavingBaekjoonId.value = true;
 
   try {
-    // TODO: 실제 서버 API로 전환 예정
-    const res = await mockUpdateBaekjoonId({ baekjoonId: value });
+    const res = await authService.updateBaekjoonId({ baekjoonId: value });
     const user = res.user;
 
     baekjoonId.value = user.baekjoonId || "";
@@ -386,8 +368,7 @@ async function handleChangePassword() {
   isChangingPassword.value = true;
 
   try {
-    // TODO: 지금은 mock 사용
-    await mockChangePassword({ newPassword: pwd });
+    await authService.changePassword({ newPassword: pwd });
 
     // 보안상 비밀번호 변경 후 세션 끊고 재로그인 요구
     await authStore.logout();
@@ -436,9 +417,7 @@ async function handleDeleteAccount() {
      *
      * await deleteMyAccount();
      */
-
-    // 지금은 mock에서는 그룹 개념이 없으니 바로 탈퇴
-    await mockDeleteAccount();
+    await authService.deleteAccount();
 
     // 세션/스토어 정리
     await authStore.logout();

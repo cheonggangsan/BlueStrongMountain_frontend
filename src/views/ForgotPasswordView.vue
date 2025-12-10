@@ -1,12 +1,7 @@
 <script setup>
 import { ref } from "vue";
 import { useRouter } from "vue-router";
-
-// TODO: 나중에 실제 백엔드 붙일 때 쓸 API
-// import { forgotPassword } from "../api/authApi";
-
-// TODO: 지금은 mock 사용 (백엔드 붙기 전까지)
-import { mockForgotPassword } from "@/mocks/auth.mock";
+import { authService } from "@/services/authService";
 
 const router = useRouter();
 
@@ -36,30 +31,7 @@ async function handleSubmit() {
   devResetToken.value = "";
 
   try {
-    /** TODO:
-     * ================================
-     * 1) 지금: mock API 호출
-     * ================================
-     * - localStorage에 저장된 mock 유저 목록에서 토큰 생성
-     * - { ok: true, token } 형태로 응답
-     */
-    const res = await mockForgotPassword({ email: email.value });
-
-    /** TODO:
-     * ================================
-     * 2) 나중: 실제 백엔드 연동
-     * ================================
-     * 백엔드에서 /auth/forgot-password 같은 엔드포인트를 제공한다고 가정.
-     *
-     * const res = await forgotPassword({ email: email.value });
-     *
-     * // 기대 응답:
-     * // { ok: true } 또는 { ok: true, message: "메일 발송 완료" }
-     *
-     * 실제 서비스에서는 토큰을 프론트로 보내지 않고,
-     * 서버에서 바로 이메일을 발송하는 패턴
-     * 이 화면에서는 "메일을 보냈습니다" 정도의 안내
-     */
+    const res = await authService.forgotPassword({ email: email.value });
 
     infoMessage.value =
       "입력하신 이메일로 비밀번호 재설정 안내를 보냈습니다. (이메일이 등록되어 있다면)";

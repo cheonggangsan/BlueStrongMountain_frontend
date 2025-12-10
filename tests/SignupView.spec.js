@@ -9,7 +9,15 @@ vi.mock("vue-router", () => ({
   }),
 }));
 
-import * as mockAuthApi from "@/mocks/auth.mock";
+vi.mock("@/services/authService", () => ({
+  authService: {
+    signup: vi.fn(),
+    checkBaekjoonId: vi.fn(),
+    checkUsernameDuplicate: vi.fn(),
+  },
+}));
+
+import { authService } from "@/services/authService";
 import SignupView from "@/views/SignupView.vue";
 
 async function goToFormStep(wrapper) {
@@ -62,7 +70,8 @@ describe("SignupView", () => {
   });
 
   it("백준 아이디 확인을 하지 않으면 에러를 보여주고 mockSignup을 호출하지 않는다", async () => {
-    const signupSpy = vi.spyOn(mockAuthApi, "mockSignup").mockResolvedValue({
+    const signupSpy = authService.signup;
+    signupSpy.mockResolvedValue({
       user: {
         id: 1,
         email: "user@example.com",
@@ -92,7 +101,7 @@ describe("SignupView", () => {
   });
 
   it("비밀번호와 확인이 다르면 에러를 보여준다", async () => {
-    vi.spyOn(mockAuthApi, "mockCheckBaekjoonId").mockResolvedValue({
+    authService.checkBaekjoonId.mockResolvedValue({
       exists: true,
     });
 
@@ -123,7 +132,8 @@ describe("SignupView", () => {
   });
 
   it("유효한 입력 시 mockSignup 호출 후 Login으로 이동한다", async () => {
-    const signupSpy = vi.spyOn(mockAuthApi, "mockSignup").mockResolvedValue({
+    const signupSpy = authService.signup;
+    signupSpy.mockResolvedValue({
       user: {
         id: 1,
         email: "user@example.com",
@@ -132,11 +142,10 @@ describe("SignupView", () => {
       },
     });
 
-    const baekjoonSpy = vi
-      .spyOn(mockAuthApi, "mockCheckBaekjoonId")
-      .mockResolvedValue({
-        exists: true,
-      });
+    const baekjoonSpy = authService.checkBaekjoonId;
+    baekjoonSpy.mockResolvedValue({
+      exists: true,
+    });
 
     const wrapper = mount(SignupView);
     await goToFormStep(wrapper);
@@ -170,11 +179,10 @@ describe("SignupView", () => {
   });
 
   it("백준 아이디 확인 버튼 클릭 시 mockCheckBaekjoonId를 호출하고 존재하는 아이디면 성공 메시지를 보여준다", async () => {
-    const checkSpy = vi
-      .spyOn(mockAuthApi, "mockCheckBaekjoonId")
-      .mockResolvedValue({
-        exists: true,
-      });
+    const checkSpy = authService.checkBaekjoonId;
+    checkSpy.mockResolvedValue({
+      exists: true,
+    });
 
     const wrapper = mount(SignupView);
     await goToFormStep(wrapper);
@@ -194,11 +202,10 @@ describe("SignupView", () => {
   });
 
   it("백준 아이디 확인 시 존재하지 않는 아이디면 경고 메시지를 보여준다", async () => {
-    const checkSpy = vi
-      .spyOn(mockAuthApi, "mockCheckBaekjoonId")
-      .mockResolvedValue({
-        exists: false,
-      });
+    const checkSpy = authService.checkBaekjoonId;
+    checkSpy.mockResolvedValue({
+      exists: false,
+    });
 
     const wrapper = mount(SignupView);
     await goToFormStep(wrapper);
@@ -220,12 +227,11 @@ describe("SignupView", () => {
   });
 
   it("닉네임 중복 확인 버튼 클릭 시 mockCheckUsernameDuplicate를 호출하고 사용 가능 메시지를 보여준다", async () => {
-    const checkSpy = vi
-      .spyOn(mockAuthApi, "mockCheckUsernameDuplicate")
-      .mockResolvedValue({
-        duplicated: false,
-        available: true,
-      });
+    const checkSpy = authService.checkUsernameDuplicate;
+    checkSpy.mockResolvedValue({
+      duplicated: false,
+      available: true,
+    });
 
     const wrapper = mount(SignupView);
     await goToFormStep(wrapper);
@@ -246,12 +252,13 @@ describe("SignupView", () => {
   });
 
   it("중복된 닉네임이면 경고 메시지를 보여주고, 제출 시 mockSignup이 호출되지 않는다", async () => {
-    vi.spyOn(mockAuthApi, "mockCheckUsernameDuplicate").mockResolvedValue({
+    authService.checkUsernameDuplicate.mockResolvedValue({
       duplicated: true,
       available: false,
     });
 
-    const signupSpy = vi.spyOn(mockAuthApi, "mockSignup").mockResolvedValue({
+    const signupSpy = authService.signup;
+    signupSpy.mockResolvedValue({
       user: {
         id: 1,
         email: "dup@example.com",

@@ -15,7 +15,13 @@ vi.mock("vue-router", () => ({
   }),
 }));
 
-import * as mockAuthApi from "@/mocks/auth.mock";
+vi.mock("@/services/authService", () => ({
+  authService: {
+    resetPassword: vi.fn(),
+  },
+}));
+
+import { authService } from "@/services/authService";
 import ResetPasswordView from "../src/views/ResetPasswordView.vue";
 
 describe("ResetPasswordView", () => {
@@ -48,10 +54,8 @@ describe("ResetPasswordView", () => {
     );
   });
 
-  it("유효한 입력 시 mockResetPassword를 호출하고 성공 메시지를 보여준다", async () => {
-    const resetSpy = vi
-      .spyOn(mockAuthApi, "mockResetPassword")
-      .mockResolvedValue({ ok: true });
+  it("유효한 입력 시 authService.resetPassword를 호출하고 성공 메시지를 보여준다", async () => {
+    authService.resetPassword.mockResolvedValue({ ok: true });
 
     const wrapper = mount(ResetPasswordView);
 
@@ -60,7 +64,7 @@ describe("ResetPasswordView", () => {
     await wrapper.find("form").trigger("submit.prevent");
     await flushPromises();
 
-    expect(resetSpy).toHaveBeenCalledWith({
+    expect(authService.resetPassword).toHaveBeenCalledWith({
       token: "reset-token-123",
       newPassword: "password123",
     });
@@ -71,7 +75,7 @@ describe("ResetPasswordView", () => {
   });
 
   it("mockResetPassword에서 INVALID_OR_EXPIRED_TOKEN 에러가 나면 해당 메시지를 보여준다", async () => {
-    vi.spyOn(mockAuthApi, "mockResetPassword").mockRejectedValue(
+    authService.resetPassword.mockRejectedValue(
       Object.assign(new Error("유효하지 않거나 만료된 링크입니다."), {
         code: "INVALID_OR_EXPIRED_TOKEN",
       }),

@@ -9,7 +9,13 @@ vi.mock("vue-router", () => ({
   }),
 }));
 
-import * as mockAuthApi from "@/mocks/auth.mock";
+vi.mock("@/services/authService", () => ({
+  authService: {
+    forgotPassword: vi.fn(),
+  },
+}));
+
+import { authService } from "@/services/authService";
 import ForgotPasswordView from "../src/views/ForgotPasswordView.vue";
 
 describe("ForgotPasswordView", () => {
@@ -27,13 +33,11 @@ describe("ForgotPasswordView", () => {
     expect(wrapper.text()).toContain("가입하신 이메일을 입력해주세요.");
   });
 
-  it("유효한 이메일 입력 시 mockForgotPassword를 호출하고 안내 메시지를 보여준다", async () => {
-    const forgotSpy = vi
-      .spyOn(mockAuthApi, "mockForgotPassword")
-      .mockResolvedValue({
-        ok: true,
-        token: "reset-token-123",
-      });
+  it("유효한 이메일 입력 시 authService.forgotPassword를 호출하고 안내 메시지를 보여준다", async () => {
+    authService.forgotPassword.mockResolvedValue({
+      ok: true,
+      token: "reset-token-123",
+    });
 
     const wrapper = mount(ForgotPasswordView);
 
@@ -41,7 +45,7 @@ describe("ForgotPasswordView", () => {
     await wrapper.find("form").trigger("submit.prevent");
     await flushPromises();
 
-    expect(forgotSpy).toHaveBeenCalledWith({
+    expect(authService.forgotPassword).toHaveBeenCalledWith({
       email: "user@example.com",
     });
 
@@ -54,7 +58,7 @@ describe("ForgotPasswordView", () => {
   });
 
   it("개발용 버튼 클릭 시 ResetPassword 라우트로 이동한다", async () => {
-    vi.spyOn(mockAuthApi, "mockForgotPassword").mockResolvedValue({
+    authService.forgotPassword.mockResolvedValue({
       ok: true,
       token: "reset-token-456",
     });
