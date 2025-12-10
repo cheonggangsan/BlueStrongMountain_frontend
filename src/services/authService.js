@@ -43,8 +43,8 @@ export const authService = {
     }
 
     // real: 백엔드 /auth/login
-    const data = await loginWithIdPw({ id, password });
-    return data.user ?? data;
+    const { user } = await loginWithIdPw({ email: id, password });
+    return user;
   },
 
   /**
