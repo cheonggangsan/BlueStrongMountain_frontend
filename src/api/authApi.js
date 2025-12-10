@@ -1,5 +1,3 @@
-// import httpClient from "./httpClient";
-// JWT 도입 시 아래처럼 교체:
 import httpClient, { setAccessToken, clearAccessToken } from "./httpClient";
 
 /**
