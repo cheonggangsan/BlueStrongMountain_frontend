@@ -1,19 +1,57 @@
-import httpClient from "./httpClient";
+// import httpClient from "./httpClient";
 // JWT 도입 시 아래처럼 교체:
-// import httpClient, { setAccessToken, clearAccessToken } from "./httpClient";
+import httpClient, { setAccessToken, clearAccessToken } from "./httpClient";
 
 /**
- * 1) 지금 당장 쓸 버전 (ID/PW + 세션)
- *    - 서버가 세션 쿠키를 내려주거나, { user } 형태 응답을 내려준다고 가정
+ * 로그인 (이메일 + 비밀번호)
+ *
+ * POST /api/v1/auth/login
+ *
+ * LoginRequest:
+ *  {
+ *    email: string,
+ *    password: string
+ *  }
+ *
+ * LoginResponse:
+ *  {
+ *    userId: number,
+ *    email: string,
+ *    username: string,
+ *    token: string,        // access token (JWT)
+ *    refreshToken: string, // refresh token (추후 사용)
+ *  }
  */
-export async function loginWithIdPw({ id, password }) {
+export async function loginWithIdPw({ email, password }) {
   const response = await httpClient.post("/auth/login", {
-    id, // 이메일을 ID로 쓰면 프론트에서 email을 그대로 넣으면 됨
+    email,
     password,
   });
 
-  // 예시: { user: { id, nickname, ... } }
-  return response.data;
+  const {
+    userId,
+    email: resEmail,
+    username,
+    token,
+    refreshToken,
+  } = response.data;
+
+  // accessToken을 httpClient 인터셉터에 등록해서
+  // 이후 요청에 Authorization 헤더가 자동으로 붙도록 함
+  if (token) {
+    setAccessToken(token);
+  }
+
+  return {
+    user: {
+      id: userId,
+      email: resEmail,
+      // FE에서 기존에 nickname을 쓰고 있으니 username을 nickname으로 매핑
+      nickname: username,
+    },
+    accessToken: token,
+    refreshToken,
+  };
 }
 
 /**
@@ -76,10 +114,12 @@ export async function updateBaekjoonId({ baekjoonId }) {
  * 로그아웃 (세션 기반)
  */
 export async function logout() {
-  const response = await httpClient.post("/auth/logout");
-  return response.data;
+  try {
+    await httpClient.post("/auth/logout");
+  } finally {
+    clearAccessToken();
+  }
 }
-
 /**
  * 비밀번호 재설정 메일 발송
  */
