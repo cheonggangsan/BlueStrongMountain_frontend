@@ -1,8 +1,21 @@
+import { difficultyOptions } from "@/data/difficultyOptions";
+
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-//TODO: dependency management
+// 난이도 문자열을 순서 있는 숫자로 변환하기 위한 매핑
+// 앞에 있을수록 더 쉬운 난이도로 가정
+const DIFFICULTY_ORDER = difficultyOptions
+  .filter((opt) => opt.value !== "ALL")
+  .map((opt) => opt.value);
+
+function difficultyToIndex(value) {
+  if (value === undefined || value === null || value === "ALL") return null;
+  const idx = DIFFICULTY_ORDER.indexOf(value);
+  return idx === -1 ? null : idx;
+}
+
 export const MOCK_PROBLEMS = [
   {
     id: 1409,
@@ -133,55 +146,8 @@ export const MOCK_PROBLEMS = [
   },
 ];
 
-// 난이도 문자열을 순서 있는 숫자로 변환하기 위한 매핑
-// 앞에 있을수록 더 쉬운 난이도로 가정
-const DIFFICULTY_ORDER = [
-  "Bronze 5",
-  "Bronze 4",
-  "Bronze 3",
-  "Bronze 2",
-  "Bronze 1",
-  "Silver 5",
-  "Silver 4",
-  "Silver 3",
-  "Silver 2",
-  "Silver 1",
-  "Gold 5",
-  "Gold 4",
-  "Gold 3",
-  "Gold 2",
-  "Gold 1",
-  "Platinum 5",
-  "Platinum 4",
-  "Platinum 3",
-  "Platinum 2",
-  "Platinum 1",
-  "Diamond 5",
-  "Diamond 4",
-  "Diamond 3",
-  "Diamond 2",
-  "Diamond 1",
-  "Ruby 5",
-  "Ruby 4",
-  "Ruby 3",
-  "Ruby 2",
-  "Ruby 1",
-  "Master 5",
-  "Master 4",
-  "Master 3",
-  "Master 2",
-  "Master 1",
-  "Unrated",
-];
-
-function difficultyToIndex(value) {
-  if (value === undefined || value === null || value === "ALL") return null;
-  const idx = DIFFICULTY_ORDER.indexOf(value);
-  return idx === -1 ? null : idx;
-}
-
 /**
- * 문제 번호로 검색
+ * 문제 번호로 검색 (mock)
  * @param {number|string} problemNo
  * @returns {Promise<Array>}
  */
@@ -193,7 +159,10 @@ export async function searchByNumber(problemNo) {
 }
 
 /**
- * 복합 조건 검색
+ * 복합 조건 검색 (mock)
+ *  - 실제 서버의 /groups/{groupId}/problems/filter 와는 스펙이 다르지만,
+ *    프론트단 필터링/테스트용으로 유지.
+ *
  * @param {{
  *   difficulty?: string,
  *   difficultyFrom?: string,
@@ -226,7 +195,7 @@ export async function searchWithConditions(params = {}) {
   const hasRange = minDiffRaw !== null || maxDiffRaw !== null;
   const hasSingleDifficulty = !hasRange && difficulty && difficulty !== "ALL";
 
-  //TODO: use for api connection
+  // TODO: use for api connection
   unsolvedOnly;
   aiRecommend;
 
@@ -285,7 +254,7 @@ export async function searchWithConditions(params = {}) {
 }
 
 /**
- * 게시 요청 (제목 + 데드라인 + 문제 목록)
+ * 게시 요청 (제목 + 데드라인 + 문제 목록) - mock
  * @param {{ title: string, deadline: string|null, problems: Array }} payload
  * @returns {Promise<{success: boolean, received: any}>}
  */

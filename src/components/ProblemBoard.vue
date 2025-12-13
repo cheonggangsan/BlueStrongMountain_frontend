@@ -18,6 +18,12 @@ const route = useRoute();
 const boardId = computed(() => route?.params?.boardId ?? null);
 const isEditMode = computed(() => !!boardId.value);
 
+const groupId = computed(() => {
+  const id = route.params.groupId;
+  const n = Number(id);
+  return Number.isFinite(n) ? n : null;
+});
+
 const title = ref("");
 const deadline = ref("");
 const selectedProblems = ref([]);
@@ -33,7 +39,6 @@ onMounted(async () => {
       deadline.value = existingBoard.deadline || "";
 
       // 문제 목록 초기화 (문제 상세 데이터 구조가 필요합니다.)
-      // Mock DB에 문제 배열이 있다고 가정해야 합니다. (이 부분은 Mock DB 구조에 따라 다름)
       // 여기서는 임시로 문제를 로드하는 과정만 표시합니다.
       selectedProblems.value = existingBoard.problems
         ? [...existingBoard.problems]
@@ -87,6 +92,12 @@ const postResult = ref(null);
 const postError = ref("");
 
 async function handlePost() {
+  const gid = groupId.value;
+  if (gid === null) {
+    postError.value = "그룹 ID가 유효하지 않습니다.";
+    return;
+  }
+
   if (!canPost.value || isPosting.value) return;
 
   isPosting.value = true;
@@ -107,21 +118,19 @@ async function handlePost() {
     const res = await problemService.postBoard(payload);
     postResult.value = res;
 
-    const groupId = Number(route.params.groupId);
-
     //TODO: integrate backend
     addBoard({
       id: res?.id || Date.now(),
-      groupId,
+      groupId: gid,
       title: payload.title,
       deadline: payload.deadline,
       problems: selectedProblems.value,
       // problemsCount: payload.problems.length,
     });
 
-    await fetchBoards(groupId);
+    await fetchBoards(gid);
 
-    router.push({ name: "BoardList", params: { groupId } });
+    router.push({ name: "BoardList", params: { groupId: gid } });
   } catch (e) {
     console.error(e);
     postError.value = "서버 전송 중 오류가 발생했습니다.";
@@ -131,20 +140,29 @@ async function handlePost() {
 }
 
 async function handleUpdate() {
+  const gid = groupId.value;
+  if (gid === null) {
+    postError.value = "그룹 ID가 유효하지 않습니다.";
+    return;
+  }
+
+  if (!boardId.value) {
+    postError.value = "게시판 ID가 유효하지 않습니다.";
+    return;
+  }
+
   if (!canPost.value || isPosting.value) return;
 
   isPosting.value = true;
   postError.value = "";
 
   try {
-    const groupId = Number(route.params.groupId);
-
     // 1) 백엔드로 보낼 payload (문제는 id + order만)
     //    - 실제 백엔드에는 보통 문제 전체 객체를 안 넣고
     //      { problemId, order } 만 보관한다.
     const apiPayload = {
       id: boardId.value,
-      groupId,
+      groupId: gid,
       title: title.value.trim(),
       deadline: deadline.value || null,
       problems: selectedProblems.value.map((p, index) => ({
@@ -153,25 +171,22 @@ async function handleUpdate() {
       })),
     };
 
-    // 실제라면 여기서 PUT 요청
-    // await putBoard(boardId.value, apiPayload);
-
     // 2) Mock DB에는 "문제 전체 객체"를 그대로 저장
     const storePayload = {
       id: boardId.value,
-      groupId,
+      groupId: gid,
       title: apiPayload.title,
       deadline: apiPayload.deadline,
       problems: [...selectedProblems.value],
     };
 
-    updateBoard(storePayload);
+    updateBoard(storePayload); // TODO: integrate backend after boardApi.updateBoard(apiPayload);
 
     // 3. 목록 데이터 갱신
-    await fetchBoards(groupId);
+    await fetchBoards(gid);
 
     // 4. 목록 페이지로 이동
-    router.push({ name: "BoardList", params: { groupId } });
+    router.push({ name: "BoardList", params: { groupId: gid } });
   } catch (e) {
     console.error(e);
     postError.value = "서버 전송 중 오류가 발생했습니다.";
@@ -216,6 +231,7 @@ async function handleSubmit() {
         <section class="main-panel">
           <div class="main-panel-body">
             <ProblemSearch
+              :group-id="groupId"
               :selected-problem-ids="selectedProblemIds"
               @add-problem="handleAddProblem"
             />

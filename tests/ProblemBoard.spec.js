@@ -1,18 +1,17 @@
-// tests/ProblemBoard.spec.js
-import { mount } from "@vue/test-utils";
+import { mount, flushPromises } from "@vue/test-utils";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { nextTick } from "vue";
 import ProblemBoard from "../src/components/ProblemBoard.vue";
 import { problemService } from "@/services/problemService";
+import { addBoard, fetchBoards } from "../src/data/boardStore";
 
 // 1) vue-router mock
+const pushMock = vi.fn();
+let routeParams = { groupId: "1" };
+
 vi.mock("vue-router", () => ({
-  useRouter: () => ({
-    push: vi.fn(), // 나중에 원하면 push 호출 여부도 검증 가능
-  }),
-  useRoute: () => ({
-    params: {}, // create 모드라 boardId 없음
-  }),
+  useRouter: () => ({ push: pushMock }),
+  useRoute: () => ({ params: routeParams }),
 }));
 
 // 2) boardStore mock (addBoard, fetchBoards 등)
@@ -26,6 +25,10 @@ vi.mock("../src/data/boardStore", () => ({
 describe("ProblemBoard.vue", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    pushMock.mockClear();
+    addBoard.mockClear();
+    fetchBoards.mockClear();
+    Object.assign(routeParams, { groupId: "1" }); // 기본은 create 모드
   });
 
   it("게시 버튼 클릭 시 postBoard 를 올바른 payload 로 호출한다", async () => {
@@ -39,6 +42,8 @@ describe("ProblemBoard.vue", () => {
         // 3) 자식 컴포넌트들은 stub 으로 단순화
         stubs: {
           ProblemSearch: {
+            name: "ProblemSearch",
+            props: ["groupId", "selectedProblemIds"],
             template: "<div />",
           },
           SelectedProblemsPanel: {
@@ -98,5 +103,111 @@ describe("ProblemBoard.vue", () => {
       { id: 1, order: 1 },
       { id: 2, order: 2 },
     ]);
+  });
+
+  it("ProblemSearch에 groupId를 전달한다", async () => {
+    const wrapper = mount(ProblemBoard, {
+      global: {
+        stubs: {
+          ProblemSearch: {
+            name: "ProblemSearch",
+            props: ["groupId", "selectedProblemIds"],
+            template: "<div />",
+          },
+          SelectedProblemsPanel: { template: "<div />", props: ["problems"] },
+          BoardHeader: { template: "<div />" },
+        },
+      },
+    });
+
+    const ps = wrapper.findComponent({ name: "ProblemSearch" });
+    expect(ps.exists()).toBe(true);
+    expect(ps.props("groupId")).toBe(1);
+  });
+
+  it("게시 성공 시 addBoard/fetchBoards/router.push를 groupId로 호출한다", async () => {
+    vi.spyOn(problemService, "postBoard").mockResolvedValue({
+      id: 999,
+      success: true,
+    });
+
+    const wrapper = mount(ProblemBoard, {
+      global: {
+        stubs: {
+          ProblemSearch: {
+            name: "ProblemSearch",
+            props: ["groupId", "selectedProblemIds"],
+            template: "<div />",
+          },
+          SelectedProblemsPanel: { template: "<div />", props: ["problems"] },
+          BoardHeader: {
+            template: `<button data-test="submit" @click="$emit('submit')">게시</button>`,
+          },
+        },
+      },
+    });
+
+    // title/selectedProblems 세팅
+    wrapper.vm.title = "테스트 세션";
+    wrapper.vm.selectedProblems.push(
+      {
+        id: 1,
+        title: "A",
+        difficulty: "Gold 5",
+        tags: [],
+        acceptedUserCount: 1,
+      },
+      {
+        id: 2,
+        title: "B",
+        difficulty: "Gold 4",
+        tags: [],
+        acceptedUserCount: 1,
+      },
+    );
+
+    await nextTick();
+
+    await wrapper.get('[data-test="submit"]').trigger("click");
+    await nextTick();
+    await flushPromises();
+
+    expect(addBoard).toHaveBeenCalledTimes(1);
+    expect(addBoard).toHaveBeenCalledWith(
+      expect.objectContaining({ groupId: 1, id: 999, title: "테스트 세션" }),
+    );
+
+    expect(fetchBoards).toHaveBeenCalledTimes(1);
+    expect(fetchBoards).toHaveBeenCalledWith(1);
+
+    expect(pushMock).toHaveBeenCalledTimes(1);
+    expect(pushMock).toHaveBeenCalledWith({
+      name: "BoardList",
+      params: { groupId: 1 },
+    });
+  });
+
+  it("title/selectedProblems가 부족하면 postBoard를 호출하지 않는다", async () => {
+    const postSpy = vi
+      .spyOn(problemService, "postBoard")
+      .mockResolvedValue({ id: 1 });
+
+    const wrapper = mount(ProblemBoard, {
+      global: {
+        stubs: {
+          ProblemSearch: { template: "<div />" },
+          SelectedProblemsPanel: { template: "<div />", props: ["problems"] },
+          BoardHeader: {
+            template: `<button data-test="submit" @click="$emit('submit')">게시</button>`,
+          },
+        },
+      },
+    });
+
+    // 아무것도 세팅 안함 -> canPost=false
+    await wrapper.get('[data-test="submit"]').trigger("click");
+    await nextTick();
+
+    expect(postSpy).not.toHaveBeenCalled();
   });
 });
