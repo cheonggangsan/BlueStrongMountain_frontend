@@ -1,5 +1,6 @@
 export const difficultyOptions = [
   { value: "ALL", label: "전체 난이도" },
+  { value: "Unrated", label: "Unrated" },
   { value: "Bronze 5", label: "Bronze 5" },
   { value: "Bronze 4", label: "Bronze 4" },
   { value: "Bronze 3", label: "Bronze 3" },
@@ -35,5 +36,4 @@ export const difficultyOptions = [
   { value: "Master 3", label: "Master 3" },
   { value: "Master 2", label: "Master 2" },
   { value: "Master 1", label: "Master 1" },
-  { value: "Unrated", label: "Unrated" },
 ];
