@@ -18,6 +18,8 @@ const route = useRoute();
 const boardId = computed(() => route?.params?.boardId ?? null);
 const isEditMode = computed(() => !!boardId.value);
 
+const groupId = computed(() => Number(route.params.groupId));
+
 const title = ref("");
 const deadline = ref("");
 const selectedProblems = ref([]);
@@ -33,7 +35,6 @@ onMounted(async () => {
       deadline.value = existingBoard.deadline || "";
 
       // 문제 목록 초기화 (문제 상세 데이터 구조가 필요합니다.)
-      // Mock DB에 문제 배열이 있다고 가정해야 합니다. (이 부분은 Mock DB 구조에 따라 다름)
       // 여기서는 임시로 문제를 로드하는 과정만 표시합니다.
       selectedProblems.value = existingBoard.problems
         ? [...existingBoard.problems]
@@ -153,9 +154,6 @@ async function handleUpdate() {
       })),
     };
 
-    // 실제라면 여기서 PUT 요청
-    // await putBoard(boardId.value, apiPayload);
-
     // 2) Mock DB에는 "문제 전체 객체"를 그대로 저장
     const storePayload = {
       id: boardId.value,
@@ -216,6 +214,7 @@ async function handleSubmit() {
         <section class="main-panel">
           <div class="main-panel-body">
             <ProblemSearch
+              :group-id="groupId"
               :selected-problem-ids="selectedProblemIds"
               @add-problem="handleAddProblem"
             />
