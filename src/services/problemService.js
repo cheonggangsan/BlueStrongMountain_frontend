@@ -17,13 +17,24 @@ const DIFFICULTY_ORDER = difficultyOptions
 function difficultyToIndex(value) {
   if (value === undefined || value === null || value === "" || value === "ALL")
     return null;
-  if (typeof value === "number" && !Number.isNaN(value)) return value; // 이미 숫자면 그대로
+
+  // 숫자인 경우에도 유효 범위 + 정수 검증
+  if (typeof value === "number") {
+    if (!Number.isFinite(value) || !Number.isInteger(value)) return null;
+    if (value < 0 || value >= DIFFICULTY_ORDER.length) return null;
+    return value;
+  }
+
   const idx = DIFFICULTY_ORDER.indexOf(String(value));
   return idx === -1 ? null : idx;
 }
 
 function difficultyIndexToLabel(value) {
-  if (typeof value === "string") return value;
+  if (typeof value === "string") {
+    // 문자열이 들어오면 "유효한 라벨인지" 보장하고 반환
+    return DIFFICULTY_ORDER.includes(value) ? value : "Unrated";
+  }
+
   if (
     !Number.isInteger(value) ||
     value < 0 ||
@@ -31,6 +42,7 @@ function difficultyIndexToLabel(value) {
   ) {
     return "Unrated";
   }
+
   return DIFFICULTY_ORDER[value];
 }
 
@@ -157,6 +169,11 @@ export const problemService = {
           : undefined;
 
     if (USE_MOCK_PROBLEM) {
+      const mockUnsolvedOnly =
+        normalizedMode === "normal" && typeof mergedUnsolved === "boolean"
+          ? !mergedUnsolved
+          : undefined;
+
       // mock은 기존 로직 재활용
       let base = await mockSearchWithConditions({
         difficultyFrom,
@@ -164,7 +181,7 @@ export const problemService = {
         tag: "", // mock은 tag(string)만 받는 구조였으니 후처리로 tags 적용
         minSolved: mergedMinSolvers,
         beforeDate: registeredBefore ?? beforeDate,
-        unsolvedOnly: !!mergedUnsolved, // boolean
+        unsolvedOnly: mockUnsolvedOnly, // boolean
         aiRecommend: !!aiRecommend,
       });
 
