@@ -18,7 +18,10 @@ const route = useRoute();
 const boardId = computed(() => route?.params?.boardId ?? null);
 const isEditMode = computed(() => !!boardId.value);
 
-const groupId = computed(() => Number(route.params.groupId));
+const groupId = computed(() => {
+  const id = route.params.groupId;
+  return id ? Number(id) : null;
+});
 
 const title = ref("");
 const deadline = ref("");
