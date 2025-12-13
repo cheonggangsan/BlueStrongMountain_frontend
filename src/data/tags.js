@@ -179,7 +179,7 @@ export const tags = [
     label: "기댓값의 선형성(Linearity Of Expectation)",
   },
   {
-    value: "flow",
+    value: "mfmc",
     label: "최대 유량 최소 컷 정리(Max-flow Min-cut Theorem)",
   },
   {
@@ -190,7 +190,7 @@ export const tags = [
   { value: "physics", label: "물리학(Physics)" },
   { value: "0_1_bfs", label: "0-1 너비 우선 탐색(0-1 Bfs)" },
   {
-    value: "number_theory",
+    value: "flt",
     label: "페르마의 소정리(Fermat's Little Theorem)",
   },
   {
