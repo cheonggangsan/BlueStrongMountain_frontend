@@ -16,7 +16,6 @@ function difficultyToIndex(value) {
   return idx === -1 ? null : idx;
 }
 
-// TODO: dependency management
 export const MOCK_PROBLEMS = [
   {
     id: 1409,
