@@ -1,5 +1,10 @@
 import { difficultyOptions } from "@/data/difficultyOptions";
 
+/**
+ * 지정한 시간(밀리초)만큼 대기합니다.
+ * @param {number} ms - 대기할 시간(밀리초).
+ * @returns {Promise<void>} 지정한 시간이 지난 후에 해결되는 Promise.
+ */
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -10,6 +15,11 @@ const DIFFICULTY_ORDER = difficultyOptions
   .filter((opt) => opt.value !== "ALL")
   .map((opt) => opt.value);
 
+/**
+ * 난이도 문자열을 정렬된 난이도 목록에서의 0 기반 인덱스로 변환한다.
+ * @param {string|null|undefined} value - 변환할 난이도 값(예: "Bronze 5"). `null`, `undefined`, 또는 `"ALL"`은 유효한 난이도로 간주되지 않는다.
+ * @returns {number|null} 유효한 난이도이면 해당 난이도의 0 기반 인덱스, 그렇지 않으면 `null`.
+ */
 function difficultyToIndex(value) {
   if (value === undefined || value === null || value === "ALL") return null;
   const idx = DIFFICULTY_ORDER.indexOf(value);
@@ -159,9 +169,10 @@ export async function searchByNumber(problemNo) {
 }
 
 /**
- * 복합 조건 검색 (mock)
- *  - 실제 서버의 /groups/{groupId}/problems/filter 와는 스펙이 다르지만,
- *    프론트단 필터링/테스트용으로 유지.
+ * 조건에 따라 모의 문제 목록을 필터링합니다.
+ *
+ * 지정된 난이도(단일 또는 범위), 태그, 최소 해결자 수, 등록일 이전 조건을 적용하여 MOCK_PROBLEMS를 필터링한 결과를 반환합니다.
+ * 전달되는 unsolvedOnly와 aiRecommend 플래그는 mock 구현에서는 무시됩니다(서버 연동 시 다른 동작이 예상됩니다).
  *
  * @param {{
  *   difficulty?: string,
@@ -169,11 +180,19 @@ export async function searchByNumber(problemNo) {
  *   difficultyTo?: string,
  *   tag?: string,
  *   minSolved?: number,
- *   beforeDate?: string,    // YYYY-MM-DD
- *   unsolvedOnly?: boolean, // 미해결 문제만 조회할지 여부
- *   aiRecommend?: boolean   // AI 추천 모드 여부
- * }} params
- * @returns {Promise<Array>}
+ *   beforeDate?: string,
+ *   unsolvedOnly?: boolean,
+ *   aiRecommend?: boolean
+ * }} params - 필터 조건들.
+ * @param {string} [params.difficulty] - 단일 난이도 필터 값(예: "Bronze 5"). 범위가 지정되면 무시됩니다.
+ * @param {string} [params.difficultyFrom] - 난이도 범위 시작 값(예: "Bronze 5").
+ * @param {string} [params.difficultyTo] - 난이도 범위 끝 값(예: "Gold 5").
+ * @param {string} [params.tag] - 포함 여부로 매칭할 태그(대소문자 무시, 부분 매칭 허용).
+ * @param {number} [params.minSolved] - acceptedUserCount가 이 값 이상인 문제만 포함합니다.
+ * @param {string} [params.beforeDate] - 등록일(YYYY-MM-DD) 기준으로 이 날짜 이전에 등록된 문제만 포함합니다.
+ * @param {boolean} [params.unsolvedOnly] - 미해결 전용 여부(이 mock에서는 사용되지 않음).
+ * @param {boolean} [params.aiRecommend] - AI 추천 모드 여부(이 mock에서는 사용되지 않음).
+ * @returns {Promise<Array>} 필터 조건을 만족하는 문제 객체의 배열.
  */
 export async function searchWithConditions(params = {}) {
   await delay(200);

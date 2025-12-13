@@ -14,6 +14,14 @@ const DIFFICULTY_ORDER = difficultyOptions
   .filter((opt) => opt.value !== "ALL")
   .map((opt) => opt.value);
 
+/**
+ * 난이도 표시(문자열 또는 숫자)를 DIFFICULTY_ORDER의 0 기반 인덱스로 변환합니다.
+ * 숫자인 경우 정수인지와 유효 범위(0 이상 DIFFICULTY_ORDER.length 미만)를 검증하고,
+ * 문자열인 경우 DIFFICULTY_ORDER에서 일치하는 항목의 인덱스를 반환합니다.
+ * 입력이 undefined, null, 빈 문자열, "ALL"이거나 유효하지 않으면 `null`을 반환합니다.
+ * @param {string|number|null|undefined} value - 난이도 라벨(예: "Easy") 또는 인덱스값
+ * @returns {number|null} 해당 난이도의 0 기반 인덱스, 유효하지 않으면 `null`
+ */
 function difficultyToIndex(value) {
   if (value === undefined || value === null || value === "" || value === "ALL")
     return null;
@@ -29,6 +37,11 @@ function difficultyToIndex(value) {
   return idx === -1 ? null : idx;
 }
 
+/**
+ * 난이도 인덱스 또는 라벨 값을 UI용 난이도 라벨로 변환한다.
+ * @param {number|string} value - 난이도를 나타내는 정수 인덱스(0 기반) 또는 라벨 문자열.
+ * @returns {string} 유효한 난이도 라벨(예: `"Bronze"`)을 반환하며, 유효하지 않으면 `"Unrated"`을 반환한다.
+ */
 function difficultyIndexToLabel(value) {
   if (typeof value === "string") {
     // 문자열이 들어오면 "유효한 라벨인지" 보장하고 반환
@@ -46,6 +59,11 @@ function difficultyIndexToLabel(value) {
   return DIFFICULTY_ORDER[value];
 }
 
+/**
+ * 입력값에서 앞부분의 YYYY-MM-DD 날짜 문자열을 추출한다.
+ * @param {any} input - 날짜 문자열 또는 날짜를 포함할 수 있는 값. 앞부분에 `YYYY-MM-DD` 패턴이 있으면 해당 부분을 추출한다.
+ * @returns {string|null} 추출된 `YYYY-MM-DD` 문자열, 패턴이 없거나 입력이 없으면 `null`.
+ */
 function toDateOnly(input) {
   if (!input) return null;
   const s = String(input);
@@ -53,16 +71,30 @@ function toDateOnly(input) {
   return match ? match[1] : null;
 }
 
+/**
+ * 값을 유한한 숫자로 변환한다.
+ * @param {*} v - 변환할 값.
+ * @returns {number|undefined} 변환된 숫자가 유한하면 해당 숫자, 그렇지 않으면 `undefined`.
+ */
 function toFiniteNumber(v) {
   const n = Number(v);
   return Number.isFinite(n) ? n : undefined;
 }
 
 /**
- * 서버/목 스펙이 달라도 UI가 쓰는 공통 모델로 정규화
- * UI에서 사용하는 필드:
- *  - id, title, difficulty(라벨), tags[], acceptedUserCount
- *  - registeredAt(YYYY-MM-DD), reviewCount(number)
+ * 서버 또는 목 데이터에서 UI가 사용하는 공통 문제 모델로 변환한다.
+ *
+ * 입력 객체는 서로 다른 필드 네이밍을 가질 수 있으며, 이 함수는 UI가 기대하는 형태로 필드를 통일한다.
+ *
+ * @param {Object} p - 서버/목 문제 객체. 가능한 필드 예: `id` 또는 `problemId`, `title` 또는 `name`, `difficulty`, `tags`(배열), `acceptedUserCount` 또는 `accepted_user_count`, `registeredAt`/`registered_before`/`updatedAt`/`createdAt`, `reviewCount`/`review_count`/`reviewCnt`.
+ * @returns {Object} 변환된 문제 모델 객체.
+ * @returns {string|number|undefined} returns.id - 문제 식별자 (`id` 또는 `problemId`).
+ * @returns {string} returns.title - 문제 제목 (없으면 빈 문자열).
+ * @returns {string} returns.difficulty - UI용 난이도 라벨. 유효하지 않으면 "Unrated".
+ * @returns {string[]} returns.tags - 태그 배열(존재하지 않으면 빈 배열).
+ * @returns {number} returns.acceptedUserCount - 수락자 수(없으면 0).
+ * @returns {string|null} returns.registeredAt - 등록일(YYYY-MM-DD) 또는 null.
+ * @returns {number|undefined} returns.reviewCount - 리뷰 수(정수가 아니면 `undefined` 가능).
  */
 function normalizeProblem(p) {
   const registeredAt =
