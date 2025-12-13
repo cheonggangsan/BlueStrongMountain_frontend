@@ -10,22 +10,16 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  groupId: {
+    type: [Number, String],
+    required: true,
+  },
 });
 
 // 검색 결과 / 상태
 const loading = ref(false);
 const error = ref("");
 const results = ref([]);
-
-// 태그 조건 만족 여부 (필터에서 넘어온 selectedTags 사용)
-function matchesSelectedTags(problem, selectedTags) {
-  if (!selectedTags || selectedTags.length === 0) return true;
-
-  const selectedLower = selectedTags.map((t) => t.toLowerCase());
-  return problem.tags.some((ptag) =>
-    selectedLower.some((st) => ptag.toLowerCase().includes(st)),
-  );
-}
 
 // 배열에서 랜덤으로 최대 count개 추출
 function getRandomSubset(arr, count) {
@@ -43,106 +37,75 @@ async function handleFiltersSearch(filter) {
   error.value = "";
 
   try {
-    const hasProblemNo = !!filter.problemNo;
-    const hasDifficultyRange =
-      (filter.difficultyFrom && filter.difficultyFrom !== "ALL") ||
-      (filter.difficultyTo && filter.difficultyTo !== "ALL");
-    const hasTag = filter.selectedTags && filter.selectedTags.length > 0;
+    // ===== 1) UI -> service payload (매핑 최소화) =====
+    const num = filter.problemNo ? Number(filter.problemNo) : NaN;
+    const problemIds = Number.isFinite(num) && num > 0 ? [num] : undefined;
 
-    const minSolvedNum =
-      filter.minSolved && !isNaN(Number(filter.minSolved))
-        ? Number(filter.minSolved)
+    const minSolversNum = filter.minSolved ? Number(filter.minSolved) : NaN;
+    const minSolvers =
+      Number.isFinite(minSolversNum) && minSolversNum >= 0
+        ? minSolversNum
         : undefined;
 
-    const hasMinSolved =
-      typeof minSolvedNum === "number" && !Number.isNaN(minSolvedNum);
+    const payload = {
+      groupId: props.groupId,
+      // SearchFilters.vue: mode = "general" | "review"
+      // service에서 "review"만 특별 처리하고 나머지는 normal로 취급하도록 해둠
+      mode: filter.mode,
 
-    const hasDate = !!filter.registeredBefore;
-    const hasUnsolvedFilter = filter.unsolvedOnly;
-    const hasAiRecommend = filter.aiRecommend;
+      problemIds,
 
-    const hasAnyCondition =
-      hasProblemNo ||
-      hasDifficultyRange ||
-      hasTag ||
-      hasMinSolved ||
-      hasDate ||
-      hasUnsolvedFilter ||
-      hasAiRecommend;
+      // UI는 문자열("Gold 5") 전달 → service가 index로 변환
+      difficultyFrom: filter.difficultyFrom,
+      difficultyTo: filter.difficultyTo,
 
-    let baseResults = [];
+      // UI는 배열 → service가 그대로 tags로 전달
+      tags:
+        Array.isArray(filter.selectedTags) && filter.selectedTags.length > 0
+          ? filter.selectedTags
+          : undefined,
 
-    if (!hasAnyCondition) {
-      // 조건이 하나도 없을 때: 기본 전체 검색
-      baseResults = await problemService.searchWithConditions({
-        difficultyFrom: undefined,
-        difficultyTo: undefined,
-        tag: "",
-        minSolved: undefined,
-        beforeDate: undefined,
-        unsolvedOnly: false,
-        aiRecommend: false,
-      });
-    } else if (hasProblemNo) {
-      // 문제 번호를 입력한 경우: 번호 + 나머지 조건
-      const candidates = await problemService.searchWithConditions({
-        difficultyFrom: hasDifficultyRange ? filter.difficultyFrom : undefined,
-        difficultyTo: hasDifficultyRange ? filter.difficultyTo : undefined,
-        tag: "",
-        minSolved: minSolvedNum,
-        beforeDate: hasDate ? filter.registeredBefore : undefined,
-        unsolvedOnly: filter.unsolvedOnly,
-        aiRecommend: filter.aiRecommend,
-      });
+      minSolvers,
 
-      const num = Number(filter.problemNo);
-      baseResults = Number.isNaN(num)
-        ? []
-        : candidates.filter((p) => p.id === num);
+      // UI 토글(너 UI에서 true=모든문제)도 service가 호환 처리(unsolved로 반전)
+      unsolvedOnly: filter.unsolvedOnly,
 
-      if (hasTag) {
-        baseResults = baseResults.filter((p) =>
-          matchesSelectedTags(p, filter.selectedTags),
-        );
-      }
-    } else {
-      // 번호는 없고, 나머지 조건 검색
-      baseResults = await problemService.searchWithConditions({
-        difficultyFrom: hasDifficultyRange ? filter.difficultyFrom : undefined,
-        difficultyTo: hasDifficultyRange ? filter.difficultyTo : undefined,
-        tag: "",
-        minSolved: minSolvedNum,
-        beforeDate: hasDate ? filter.registeredBefore : undefined,
-        unsolvedOnly: filter.unsolvedOnly,
-        aiRecommend: filter.aiRecommend,
-      });
+      // UI 날짜 필터 (service가 updatedAt->registeredAt 정규화 후 필터까지 처리)
+      registeredBefore: filter.registeredBefore || undefined,
 
-      if (hasTag) {
-        baseResults = baseResults.filter((p) =>
-          matchesSelectedTags(p, filter.selectedTags),
-        );
-      }
-    }
+      // 확장용 (현재 서버 미지원이어도 payload로 넘겨도 무방)
+      aiRecommend: !!filter.aiRecommend,
+    };
 
-    // 모드별 후처리 + 정렬
+    let baseResults = await problemService.filterProblems(payload);
+
+    // ===== 2) UI 전용 후처리(정렬/랜덤)만 남긴다 =====
     if (filter.mode === "review") {
-      // 복습 모드: 한 번 이상 푼 문제만, 복습 횟수 높은 순
-      baseResults = baseResults.filter((p) => (p.reviewCount ?? 0) > 0);
-      baseResults.sort((a, b) => (b.reviewCount ?? 0) - (a.reviewCount ?? 0));
-    } else {
-      // 일반 모드
-      // 기본: 미해결만(복습 횟수 0) 보이게, 토글 켠 경우엔 전체
-      if (!filter.unsolvedOnly) {
-        baseResults = baseResults.filter((p) => (p.reviewCount ?? 0) === 0);
-      }
+      const hasReviewCount = baseResults.some((p) =>
+        Number.isFinite(Number(p.reviewCount)),
+      );
 
+      if (hasReviewCount) {
+        baseResults.sort(
+          (a, b) => Number(b.reviewCount ?? 0) - Number(a.reviewCount ?? 0),
+        );
+      } else {
+        // reviewCount가 없으면 날짜(registeredAt) 기준으로 의미있는 정렬
+        // normalizeProblem에서 registeredAt을 YYYY-MM-DD로 만들어두었으니 문자열 비교 OK
+        baseResults.sort((a, b) => {
+          const da = a.registeredAt || "";
+          const db = b.registeredAt || "";
+          return db.localeCompare(da); // 최신 우선
+        });
+      }
+    } else {
       if (filter.aiRecommend) {
-        // AI 추천: 서버 순서 그대로
+        // AI 추천: 서버 순서 그대로 (추후 서버가 지원하면 그대로 UX 유지)
       } else if (filter.randomMode) {
         const count = Math.min(5, baseResults.length);
         baseResults = count > 0 ? getRandomSubset(baseResults, count) : [];
       } else {
-        // 기본 정렬 (복습 횟수 -> 등록일)
+        // 기본 정렬: reviewCount(낮은 순) -> registeredAt(오래된 순)
         baseResults.sort((a, b) => {
           const ra = a.reviewCount ?? Number.POSITIVE_INFINITY;
           const rb = b.reviewCount ?? Number.POSITIVE_INFINITY;
@@ -159,7 +122,7 @@ async function handleFiltersSearch(filter) {
     results.value = baseResults;
 
     if (results.value.length === 0) {
-      error.value = "조건에 맞는 문제가 없습니다. (mock 데이터 기준)";
+      error.value = "조건에 맞는 문제가 없습니다.";
     }
   } catch (e) {
     console.error(e);
