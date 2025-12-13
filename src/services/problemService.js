@@ -23,16 +23,22 @@ function difficultyToIndex(value) {
 }
 
 function difficultyIndexToLabel(value) {
-  if (typeof value === "string") return value; // 이미 라벨이면 그대로
-  if (typeof value !== "number" || Number.isNaN(value)) return "Unrated";
-  return DIFFICULTY_ORDER[value] ?? "Unrated";
+  if (typeof value === "string") return value;
+  if (
+    !Number.isInteger(value) ||
+    value < 0 ||
+    value >= DIFFICULTY_ORDER.length
+  ) {
+    return "Unrated";
+  }
+  return DIFFICULTY_ORDER[value];
 }
 
-function toDateOnly(yyyyMMddHHmmss) {
-  // "2025-11-28 14:28:49" -> "2025-11-28"
-  if (!yyyyMMddHHmmss) return null;
-  const s = String(yyyyMMddHHmmss);
-  return s.includes(" ") ? s.split(" ")[0] : s.slice(0, 10);
+function toDateOnly(input) {
+  if (!input) return null;
+  const s = String(input);
+  const match = s.match(/^(\d{4}-\d{2}-\d{2})/); // "2025-11-28 ..." or "2025-11-28T..."
+  return match ? match[1] : null;
 }
 
 function toFiniteNumber(v) {
