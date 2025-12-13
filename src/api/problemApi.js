@@ -2,7 +2,7 @@ import httpClient from "./httpClient";
 
 /**
  * 문제 번호로 단건 조회
- *  - GET /v1/problems/{problemNo}
+ *  - GET /api/v1/problems/{problemNo}
  *  - 백엔드가 단건/배열 중 어떤 형태로 내려줘도
  *    최종 반환은 "배열"로 맞춰줌.
  */
