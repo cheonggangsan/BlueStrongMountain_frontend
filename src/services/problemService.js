@@ -121,8 +121,7 @@ export const problemService = {
       aiRecommend, // 현재 미사용(확장용)
     } = params;
 
-    const normalizedMode =
-      mode === "review" ? "review" : mode === "normal" ? "normal" : "normal"; // general/undefined -> normal
+    const normalizedMode = mode === "review" ? "review" : "normal"; // general/undefined -> normal
 
     const diffFromIdx = difficultyToIndex(difficultyFrom);
     const diffToIdx = difficultyToIndex(difficultyTo);
@@ -159,7 +158,7 @@ export const problemService = {
         tag: "", // mock은 tag(string)만 받는 구조였으니 후처리로 tags 적용
         minSolved: mergedMinSolvers,
         beforeDate: registeredBefore ?? beforeDate,
-        unsolvedOnly: mergedUnsolved ? true : false,
+        unsolvedOnly: !!mergedUnsolved, // boolean
         aiRecommend: !!aiRecommend,
       });
 
