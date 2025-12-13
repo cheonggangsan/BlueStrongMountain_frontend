@@ -25,7 +25,9 @@ vi.mock("../src/data/boardStore", () => ({
 describe("ProblemBoard.vue", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-    pushMock.mockReset();
+    pushMock.mockClear();
+    addBoard.mockClear();
+    fetchBoards.mockClear();
     Object.assign(routeParams, { groupId: "1" }); // 기본은 create 모드
   });
 
@@ -147,7 +149,22 @@ describe("ProblemBoard.vue", () => {
 
     // title/selectedProblems 세팅
     wrapper.vm.title = "테스트 세션";
-    wrapper.vm.selectedProblems.push({ id: 1 }, { id: 2 });
+    wrapper.vm.selectedProblems.push(
+      {
+        id: 1,
+        title: "A",
+        difficulty: "Gold 5",
+        tags: [],
+        acceptedUserCount: 1,
+      },
+      {
+        id: 2,
+        title: "B",
+        difficulty: "Gold 4",
+        tags: [],
+        acceptedUserCount: 1,
+      },
+    );
 
     await nextTick();
 
