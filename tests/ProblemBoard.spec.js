@@ -1,4 +1,4 @@
-import { mount } from "@vue/test-utils";
+import { mount, flushPromises } from "@vue/test-utils";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { nextTick } from "vue";
 import ProblemBoard from "../src/components/ProblemBoard.vue";
@@ -26,7 +26,7 @@ describe("ProblemBoard.vue", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     pushMock.mockReset();
-    routeParams = { groupId: "1" }; // ✅ 기본은 create 모드
+    Object.assign(routeParams, { groupId: "1" }); // 기본은 create 모드
   });
 
   it("게시 버튼 클릭 시 postBoard 를 올바른 payload 로 호출한다", async () => {
@@ -153,8 +153,7 @@ describe("ProblemBoard.vue", () => {
 
     await wrapper.get('[data-test="submit"]').trigger("click");
     await nextTick();
-    // postBoard 이후 비동기들까지 확실히
-    await Promise.resolve();
+    await flushPromises();
 
     expect(addBoard).toHaveBeenCalledTimes(1);
     expect(addBoard).toHaveBeenCalledWith(
