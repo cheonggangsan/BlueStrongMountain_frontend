@@ -358,4 +358,76 @@ describe("GroupForm.vue", () => {
     const submitButton = findButtonByText(wrapper, "변경 사항 저장");
     expect(submitButton).toBeTruthy();
   });
+
+  it("검색 버튼 클릭 시 searchMembers가 호출된다 (입력값 전달)", async () => {
+    searchMembers.mockResolvedValue([]);
+
+    const wrapper = mount(GroupForm, { props: { mode: "create" } });
+
+    await wrapper
+      .find('input[placeholder="이름 또는 닉네임으로 검색"]')
+      .setValue("이알고");
+
+    const searchButton = findButtonByText(wrapper, "검색");
+    await searchButton.trigger("click");
+    await flushPromises();
+
+    expect(searchMembers).toHaveBeenCalledTimes(1);
+    expect(searchMembers).toHaveBeenCalledWith("이알고");
+  });
+
+  it("검색 input에서 Enter 키를 누르면 searchMembers가 호출된다", async () => {
+    searchMembers.mockResolvedValue([]);
+
+    const wrapper = mount(GroupForm, { props: { mode: "create" } });
+
+    const input = wrapper.find(
+      'input[placeholder="이름 또는 닉네임으로 검색"]',
+    );
+    await input.setValue("알고");
+    await input.trigger("keyup.enter");
+    await flushPromises();
+
+    expect(searchMembers).toHaveBeenCalledTimes(1);
+    expect(searchMembers).toHaveBeenCalledWith("알고");
+  });
+
+  it("검색 중에는 '검색 중...'이 표시되고, 완료되면 사라진다", async () => {
+    let resolve;
+    const pending = new Promise((r) => (resolve = r));
+    searchMembers.mockReturnValue(pending);
+
+    const wrapper = mount(GroupForm, { props: { mode: "create" } });
+
+    await wrapper
+      .find('input[placeholder="이름 또는 닉네임으로 검색"]')
+      .setValue("이알고");
+
+    const searchButton = findButtonByText(wrapper, "검색");
+    await searchButton.trigger("click");
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.text()).toContain("검색 중...");
+
+    resolve([]);
+    await flushPromises();
+
+    expect(wrapper.text()).not.toContain("검색 중...");
+  });
+
+  it("searchMembers가 실패하면 에러 메시지를 표시한다", async () => {
+    searchMembers.mockRejectedValue(new Error("boom"));
+
+    const wrapper = mount(GroupForm, { props: { mode: "create" } });
+
+    await wrapper
+      .find('input[placeholder="이름 또는 닉네임으로 검색"]')
+      .setValue("이알고");
+
+    const searchButton = findButtonByText(wrapper, "검색");
+    await searchButton.trigger("click");
+    await flushPromises();
+
+    expect(wrapper.text()).toContain("멤버 검색 중 오류가 발생했습니다.");
+  });
 });
