@@ -33,6 +33,21 @@ function nowDatetimeLocal() {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+function mapBoardProgressFromApi(api) {
+  return {
+    boardId: api.boardId ?? null,
+    problemStatus: (api.problemStatus || []).map((p) => ({
+      problemId: p.problemId,
+      solvedUsers: (p.solvedUserIds || []).map(Number),
+    })),
+    userStatus: (api.userStatus || []).map((u) => ({
+      userId: u.userId,
+      username: u.username ?? null,
+      solvedProblems: (u.solvedProblemIds || []).map(Number),
+    })),
+  };
+}
+
 function mapBoardSummaryFromApi(apiBoard, groupIdFromArg) {
   return {
     id: apiBoard.boardId,
@@ -75,7 +90,7 @@ function mapBoardDetailFromApi(apiBoard) {
     endTime: apiBoard.endTime ?? null,
 
     // ProblemBoard/BoardDetailView에서 쓰는 필드
-    deadline: apiBoard.endTime ?? null,
+    deadline: toDatetimeLocal(apiBoard.endTime),
     problems,
     problemsCount: problems.length,
   };
@@ -153,10 +168,16 @@ export const boardService = {
     return boardApi.deleteBoard(groupId, boardId, requesterId);
   },
 
-  async getBoardUserStatus(groupId, boardId) {
+  async getBoardUserStatus({ groupId, boardId, requesterId }) {
     if (USE_MOCK_BOARD_STATUS) {
       return mockGetBoardUserStatus(groupId, boardId);
     }
-    return boardApi.getBoardUserStatus(groupId, boardId);
+
+    const apiRes = await boardApi.getBoardUserStatus(
+      groupId,
+      boardId,
+      requesterId,
+    );
+    return mapBoardProgressFromApi(apiRes);
   },
 };
