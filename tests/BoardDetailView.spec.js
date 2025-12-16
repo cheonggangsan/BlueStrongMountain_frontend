@@ -146,7 +146,7 @@ describe("BoardDetailView.vue", () => {
     await flushPromises();
 
     expect(fetchGroupByIdMock).toHaveBeenCalledWith(1);
-    expect(fetchBoardByIdMock).toHaveBeenCalledWith(10);
+    expect(fetchBoardByIdMock).toHaveBeenCalledWith(1, 10);
     expect(getBoardUserStatusMock).toHaveBeenCalledWith(1, 10);
 
     expect(wrapper.text()).toContain("2023년 상반기 회고");
