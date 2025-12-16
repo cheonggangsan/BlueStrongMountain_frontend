@@ -1,5 +1,6 @@
 <script setup>
-import { ref } from "vue";
+import { ref, computed } from "vue";
+import { difficultyOptions } from "@/data/difficultyOptions";
 
 const props = defineProps({
   problems: {
@@ -33,6 +34,22 @@ function handleClearAll() {
   if (!ok) return;
   emit("clear-all");
 }
+
+const tierLabel = (difficulty) => {
+  if (difficulty === undefined || difficulty === null) return null;
+
+  // 문자열로 이미 들어오는 케이스(예: "Gold 5")면 그대로 라벨 처리
+  const direct = difficultyOptions.find((o) => o.value === String(difficulty));
+  if (direct) return direct.label;
+
+  const n = Number(difficulty);
+  if (!Number.isFinite(n)) return null;
+
+  const list = difficultyOptions.filter((o) => o.value !== "ALL"); // [Unrated, Bronze 5, ...]
+  return list[n]?.label ?? `난이도 ${n}`;
+};
+
+const displayProblems = computed(() => props.problems || []);
 </script>
 
 <template>
@@ -58,7 +75,7 @@ function handleClearAll() {
 
     <div class="selected-problems-list">
       <div
-        v-for="(problem, idx) in problems"
+        v-for="(problem, idx) in displayProblems"
         :key="problem.id"
         class="problem-slot"
         draggable="true"
@@ -66,16 +83,43 @@ function handleClearAll() {
         @dragover="handleDragOver"
         @drop="handleDrop(idx)"
       >
-        <div class="text-xs">
-          <span class="font-semibold mr-1">문제 {{ idx + 1 }}</span>
-          <span class="text-gray-600">{{ problem.title }}</span>
+        <!-- 왼쪽: 문제 번호 + 제목 + 티어 -->
+        <div class="min-w-0">
+          <!-- 1) 첫 줄: 문제번호 + 문제이름 -->
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-semibold text-gray-700 shrink-0">
+              #{{ idx + 1 }}
+            </span>
+
+            <span class="text-xs font-medium text-gray-900 truncate">
+              {{ problem.title || `문제 ${problem.id}` }}
+            </span>
+          </div>
+
+          <!-- 2) 둘째 줄: ID + 난이도(ProblemSearch 스타일) -->
+          <div class="mt-0.5 flex items-center gap-2">
+            <span class="text-[10px] text-gray-400 truncate">
+              ID: {{ problem.id }}
+            </span>
+
+            <span
+              v-if="tierLabel(problem.difficulty)"
+              class="px-2 py-[2px] rounded-full bg-yellow-100 text-yellow-700 text-[11px] font-semibold shrink-0"
+              title="난이도"
+            >
+              {{ tierLabel(problem.difficulty) }}
+            </span>
+          </div>
         </div>
-        <div class="flex items-center gap-2">
+
+        <!-- 오른쪽: 링크 + 삭제 -->
+        <div class="flex items-center gap-2 shrink-0">
           <a
             :href="`https://www.acmicpc.net/problem/${problem.id}`"
             target="_blank"
             rel="noopener noreferrer"
             class="inline-flex items-center justify-center h-6 w-6 rounded-md border border-yellow-300 text-[11px] text-yellow-700 bg-yellow-50 hover:bg-yellow-100 hover:border-yellow-400 transition"
+            title="백준 문제 열기"
             @click.stop
           >
             ↗
@@ -85,6 +129,7 @@ function handleClearAll() {
             type="button"
             class="problem-remove-btn"
             aria-label="문제 제거"
+            title="선택 목록에서 제거"
             @click.stop="emit('remove', problem.id)"
           >
             ✕
