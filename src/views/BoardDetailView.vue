@@ -140,7 +140,7 @@ onMounted(async () => {
     const [, g, b, s] = await Promise.all([
       ensureMembersLoaded(1000),
       fetchGroupById(groupId),
-      fetchBoardById(boardId),
+      fetchBoardById(groupId, boardId),
       getBoardUserStatus(groupId, boardId),
     ]);
 
