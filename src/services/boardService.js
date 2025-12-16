@@ -173,11 +173,11 @@ export const boardService = {
       return mockGetBoardUserStatus(groupId, boardId);
     }
 
-    const apiRes = await boardApi.getBoardUserStatus(
+    const apiRes = await boardApi.getBoardUserStatus({
       groupId,
       boardId,
       requesterId,
-    );
+    });
     return mapBoardProgressFromApi(apiRes);
   },
 };
