@@ -93,14 +93,14 @@ export async function getBoardProblems(groupId, boardId) {
   return res.data; // number[]
 }
 
-// TODO: Swagger
 /**
  * 보드별 유저 풀이 현황
- * GET /api/v1/groups/{groupId}/boards/{boardId}/userStatus
+ * GET /api/v1/groups/{groupId}/boards/{boardId}/userStatus?requesterId=...
  */
-export async function getBoardUserStatus(groupId, boardId) {
+export async function getBoardUserStatus({ groupId, boardId, requesterId }) {
   const res = await httpClient.get(
-    `/v1/groups/${groupId}/boards/${boardId}/userStatus`,
+    `/groups/${groupId}/boards/${boardId}/userStatus`,
+    { params: { requesterId } },
   );
   return res.data;
 }
