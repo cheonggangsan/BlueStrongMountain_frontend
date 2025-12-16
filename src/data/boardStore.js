@@ -70,6 +70,9 @@ export async function updateBoard(board) {
 
 /**
  * 특정 보드의 상세 정보를 가져옵니다.
+ *  params:
+ *  - groupId: number
+ *  - boardId: number
  */
 export async function fetchBoardById(groupId, boardId) {
   return boardService.fetchBoardById(groupId, boardId);
@@ -77,7 +80,11 @@ export async function fetchBoardById(groupId, boardId) {
 
 /**
  * 보드별 유저 풀이 현황 조회
+ * params:
+ *  - groupId: number
+ *  - boardId: number
+ *  - requesterId: number
  */
-export async function getBoardUserStatus(groupId, boardId) {
-  return boardService.getBoardUserStatus(groupId, boardId);
+export async function getBoardUserStatus({ groupId, boardId, requesterId }) {
+  return boardService.getBoardUserStatus({ groupId, boardId, requesterId });
 }
