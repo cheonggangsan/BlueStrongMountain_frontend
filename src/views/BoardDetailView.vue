@@ -157,7 +157,7 @@ onMounted(async () => {
       getBoardUserStatus({
         groupId: gid,
         boardId: bid,
-        requesterId: Number(currentUserId.value),
+        requesterId: currentUserId.value ? Number(currentUserId.value) : null,
       }),
     ]);
 
