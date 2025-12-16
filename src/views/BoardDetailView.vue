@@ -4,7 +4,7 @@ import { useRoute, useRouter } from "vue-router";
 import { useAuthStore } from "../data/authStore";
 import { fetchBoardById } from "../data/boardStore";
 import { fetchGroupById } from "../data/groupStore";
-import { members, ensureMembersLoaded } from "@/data/memberStore";
+import { members } from "@/data/memberStore";
 import { getBoardUserStatus } from "@/data/boardStore";
 
 const route = useRoute();
@@ -31,17 +31,29 @@ function toNumber(v) {
 
 // 그룹 참여자 목록 (owner + managers + members)
 const participants = computed(() => {
+  const list = (status.value?.userStatus || [])
+    .map((u) => {
+      const id = toNumber(u.userId);
+      if (id == null) return null;
+
+      const username = u.username ?? ""; // swager
+      return {
+        id,
+        name: username || `user-${id}`,
+        nickname: username,
+      };
+    })
+    .filter(Boolean);
+
+  // userStatus가 비어있을 때만 group+memberStore 방식으로 fallback
+  if (list.length) return list;
+
   if (!group.value) return [];
-
   const idSet = new Set();
-
-  if (group.value.ownerId != null) {
-    idSet.add(toNumber(group.value.ownerId));
-  }
+  if (group.value.ownerId != null) idSet.add(toNumber(group.value.ownerId));
   (group.value.managerIds || []).forEach((id) => idSet.add(toNumber(id)));
   (group.value.memberIds || []).forEach((id) => idSet.add(toNumber(id)));
 
-  // memberStore에 있는 유저 데이터에서 필터
   return members.value.filter((m) => idSet.has(toNumber(m.id)));
 });
 
@@ -68,7 +80,8 @@ const problemSolvedMap = computed(() => {
   if (!status.value?.problemStatus) return map;
 
   status.value.problemStatus.forEach((p) => {
-    const set = new Set((p.solvedUsers || []).map(toNumber));
+    const ids = p.solvedUserIds ?? p.solvedUsers ?? [];
+    const set = new Set(ids.map(toNumber));
     map.set(toNumber(p.problemId), set);
   });
 
@@ -81,7 +94,8 @@ const userSolvedMap = computed(() => {
   if (!status.value?.userStatus) return map;
 
   status.value.userStatus.forEach((u) => {
-    const set = new Set((u.solvedProblems || []).map(toNumber));
+    const ids = u.solvedProblemIds ?? u.solvedProblems ?? [];
+    const set = new Set(ids.map(toNumber));
     map.set(toNumber(u.userId), set);
   });
 
@@ -134,14 +148,17 @@ onMounted(async () => {
   error.value = "";
 
   try {
-    const groupId = route.params.groupId;
-    const boardId = route.params.boardId;
+    const gid = Number(route.params.groupId);
+    const bid = Number(route.params.boardId);
 
-    const [, g, b, s] = await Promise.all([
-      ensureMembersLoaded(1000),
-      fetchGroupById(groupId),
-      fetchBoardById(groupId, boardId),
-      getBoardUserStatus(groupId, boardId),
+    const [g, b, s] = await Promise.all([
+      fetchGroupById(gid),
+      fetchBoardById(gid, bid),
+      getBoardUserStatus({
+        groupId: gid,
+        boardId: bid,
+        requesterId: Number(currentUserId.value),
+      }),
     ]);
 
     group.value = g;
