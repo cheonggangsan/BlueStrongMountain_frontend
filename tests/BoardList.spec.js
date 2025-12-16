@@ -55,8 +55,8 @@ vi.mock("@/data/groupStore", () => {
 vi.mock("@/data/boardStore", () => {
   const boards = ref([]);
 
-  const deleteBoard = vi.fn((id) => {
-    boards.value = boards.value.filter((b) => b.id !== id);
+  const deleteBoard = vi.fn(({ boardId }) => {
+    boards.value = boards.value.filter((b) => b.id !== boardId);
   });
 
   const fetchBoards = vi.fn(async () => {
@@ -228,7 +228,11 @@ describe("BoardList.vue", () => {
 
     // 1) 동작 검증
     expect(confirmSpy).toHaveBeenCalled();
-    expect(deleteBoardMock).toHaveBeenCalledWith(1);
+    expect(deleteBoardMock).toHaveBeenCalledWith({
+      groupId: 1,
+      boardId: 1,
+      requesterId: 1,
+    });
     expect(fetchBoardsMock).toHaveBeenCalledWith(1);
 
     // 2) store 상태에서 사라졌는지
