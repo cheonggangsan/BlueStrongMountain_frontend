@@ -36,7 +36,7 @@ const participants = computed(() => {
       const id = toNumber(u.userId);
       if (id == null) return null;
 
-      const username = u.username ?? ""; // swager
+      const username = u.username ?? ""; // swagger
       return {
         id,
         name: username || `user-${id}`,
