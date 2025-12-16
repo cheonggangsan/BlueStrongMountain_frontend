@@ -99,13 +99,13 @@ const sampleBoard = {
 
 const sampleStatus = {
   problemStatus: [
-    { problemId: 1008, solvedUsers: [1, 2] },
-    { problemId: 1009, solvedUsers: [1, 3] },
+    { problemId: 1008, solvedUserIds: [1, 2] },
+    { problemId: 1009, solvedUserIds: [1, 3] },
   ],
   userStatus: [
-    { userId: 1, solvedProblems: [1008, 1009] },
-    { userId: 2, solvedProblems: [1008] },
-    { userId: 3, solvedProblems: [1009] },
+    { userId: 1, username: "이알고", solvedProblemIds: [1008, 1009] },
+    { userId: 2, username: "달피곰", solvedProblemIds: [1008] },
+    { userId: 3, username: "집에갈까요", solvedProblemIds: [1009] },
   ],
 };
 
@@ -147,7 +147,11 @@ describe("BoardDetailView.vue", () => {
 
     expect(fetchGroupByIdMock).toHaveBeenCalledWith(1);
     expect(fetchBoardByIdMock).toHaveBeenCalledWith(1, 10);
-    expect(getBoardUserStatusMock).toHaveBeenCalledWith(1, 10);
+    expect(getBoardUserStatusMock).toHaveBeenCalledWith({
+      groupId: 1,
+      boardId: 10,
+      requesterId: 1,
+    });
 
     expect(wrapper.text()).toContain("2023년 상반기 회고");
     expect(wrapper.text()).toContain("CS 면접 대비반");
