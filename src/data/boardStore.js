@@ -14,42 +14,65 @@ export async function fetchBoards(groupId) {
 
 /**
  * 새 보드를 추가합니다.
- * - 기존 addBoard 이름을 유지 (호출부 영향 최소화)
+ *
+ * board:
+ *  - groupId: number
+ *  - requesterId: number
+ *  - title: string
+ *  - deadline?: string (datetime-local 값)
+ *  - content?: string
+ *  - problems: { id: number, ... }[]
  */
 export async function addBoard(board) {
-  const newBoard = await boardService.createBoard(board);
-  boards.value = [newBoard, ...boards.value];
-  return newBoard;
+  await boardService.createBoard(board);
 }
 
 /**
  * 보드를 삭제합니다.
+ *
+ * params:
+ *  - groupId: number
+ *  - boardId: number
+ *  - requesterId: number
  */
-export async function deleteBoard(boardId) {
-  await boardService.deleteBoard(boardId);
+export async function deleteBoard({ groupId, boardId, requesterId }) {
+  await boardService.deleteBoard({ groupId, boardId, requesterId });
+
   const numericId = Number(boardId);
   boards.value = boards.value.filter((b) => b.id !== numericId);
 }
 
 /**
  * 보드를 수정합니다.
+ *
+ * board:
+ *  - id: number
+ *  - groupId: number
+ *  - requesterId: number
+ *  - title: string
+ *  - deadline?: string
+ *  - content?: string
+ *  - problems: { id: number, ... }[]
  */
-export async function updateBoard(updatedBoard) {
-  const updated = await boardService.updateBoard(updatedBoard);
+export async function updateBoard(board) {
+  await boardService.updateBoard(board);
 
-  const index = boards.value.findIndex((b) => b.id == updated.id);
+  const numericId = Number(board.id);
+  const index = boards.value.findIndex((b) => b.id === numericId);
+
   if (index !== -1) {
-    boards.value.splice(index, 1, updated);
+    boards.value.splice(index, 1, {
+      ...boards.value[index],
+      ...board,
+    });
   }
-
-  return updated;
 }
 
 /**
  * 특정 보드의 상세 정보를 가져옵니다.
  */
-export async function fetchBoardById(boardId) {
-  return boardService.fetchBoardById(boardId);
+export async function fetchBoardById(groupId, boardId) {
+  return boardService.fetchBoardById(groupId, boardId);
 }
 
 /**

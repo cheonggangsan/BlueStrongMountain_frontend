@@ -97,9 +97,24 @@ function goGroupList() {
 }
 
 async function handleDelete(id) {
+  if (!currentUserId.value) {
+    alert("로그인이 필요합니다.");
+    return;
+  }
+
   if (confirm("정말 이 보드를 삭제하시겠습니까?")) {
-    deleteBoard(id);
-    await fetchBoards(route.params.groupId);
+    try {
+      await deleteBoard({
+        groupId: Number(route.params.groupId),
+        boardId: id,
+        requesterId: currentUserId.value,
+      });
+
+      await fetchBoards(Number(route.params.groupId));
+    } catch (e) {
+      console.error(e);
+      alert("보드 삭제 중 오류가 발생했습니다: " + e.message);
+    }
   }
 }
 </script>

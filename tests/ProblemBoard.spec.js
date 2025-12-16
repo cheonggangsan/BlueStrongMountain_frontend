@@ -1,9 +1,9 @@
 import { mount, flushPromises } from "@vue/test-utils";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { nextTick } from "vue";
-import ProblemBoard from "../src/components/ProblemBoard.vue";
-import { problemService } from "@/services/problemService";
-import { addBoard, fetchBoards } from "../src/data/boardStore";
+import { nextTick, ref } from "vue";
+// import ProblemBoard from "../src/components/ProblemBoard.vue";
+// import { problemService } from "@/services/problemService";
+// import { addBoard, fetchBoards } from "../src/data/boardStore";
 
 // 1) vue-router mock
 const pushMock = vi.fn();
@@ -14,7 +14,20 @@ vi.mock("vue-router", () => ({
   useRoute: () => ({ params: routeParams }),
 }));
 
-// 2) boardStore mock (addBoard, fetchBoards 등)
+// =======================
+// 2) authStore mock
+//    - ProblemBoard.vue는 currentUserId가 없으면 early return 함
+// =======================
+vi.mock("../src/data/authStore", () => {
+  const user = ref({ id: 1, name: "테스트 유저" });
+  return {
+    useAuthStore: () => ({ user }),
+  };
+});
+
+// =======================
+// 3) boardStore mock (ProblemBoard가 실제로 호출하는 것들)
+// =======================
 vi.mock("../src/data/boardStore", () => ({
   addBoard: vi.fn(),
   updateBoard: vi.fn(),
@@ -22,21 +35,20 @@ vi.mock("../src/data/boardStore", () => ({
   fetchBoardById: vi.fn(),
 }));
 
+// =======================
+// 4) SUT & mocked exports import
+//    - mock 선언 이후에 import
+// =======================
+import ProblemBoard from "../src/components/ProblemBoard.vue";
+import { addBoard, fetchBoards } from "../src/data/boardStore";
+
 describe("ProblemBoard.vue", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-    pushMock.mockClear();
-    addBoard.mockClear();
-    fetchBoards.mockClear();
     Object.assign(routeParams, { groupId: "1" }); // 기본은 create 모드
   });
 
   it("게시 버튼 클릭 시 postBoard 를 올바른 payload 로 호출한다", async () => {
-    // postBoard 모킹
-    const mockPost = vi
-      .spyOn(problemService, "postBoard")
-      .mockResolvedValue({ id: 999, success: true });
-
     const wrapper = mount(ProblemBoard, {
       global: {
         // 3) 자식 컴포넌트들은 stub 으로 단순화
@@ -91,17 +103,29 @@ describe("ProblemBoard.vue", () => {
     // 5) BoardHeader stub 의 submit 버튼 클릭 → ProblemBoard 의 handleSubmit → handlePost 실행
     const submitButton = wrapper.get('[data-test="submit"]');
     await submitButton.trigger("click");
-    await nextTick();
+    await flushPromises();
 
     // 6) postBoard 호출 검증
-    expect(mockPost).toHaveBeenCalledTimes(1);
+    expect(addBoard).toHaveBeenCalledTimes(1);
 
-    const payload = mockPost.mock.calls[0][0];
+    const payload = addBoard.mock.calls[0][0];
     expect(payload.title).toBe("테스트 세션");
     expect(payload.deadline).toBeNull(); // deadline 안 넣었으니 null
     expect(payload.problems).toEqual([
-      { id: 1, order: 1 },
-      { id: 2, order: 2 },
+      {
+        id: 1,
+        title: "A",
+        difficulty: "Gold 5",
+        tags: [],
+        acceptedUserCount: 1,
+      },
+      {
+        id: 2,
+        title: "B",
+        difficulty: "Gold 4",
+        tags: [],
+        acceptedUserCount: 1,
+      },
     ]);
   });
 
@@ -126,11 +150,6 @@ describe("ProblemBoard.vue", () => {
   });
 
   it("게시 성공 시 addBoard/fetchBoards/router.push를 groupId로 호출한다", async () => {
-    vi.spyOn(problemService, "postBoard").mockResolvedValue({
-      id: 999,
-      success: true,
-    });
-
     const wrapper = mount(ProblemBoard, {
       global: {
         stubs: {
@@ -141,6 +160,7 @@ describe("ProblemBoard.vue", () => {
           },
           SelectedProblemsPanel: { template: "<div />", props: ["problems"] },
           BoardHeader: {
+            name: "BoardHeader",
             template: `<button data-test="submit" @click="$emit('submit')">게시</button>`,
           },
         },
@@ -173,9 +193,6 @@ describe("ProblemBoard.vue", () => {
     await flushPromises();
 
     expect(addBoard).toHaveBeenCalledTimes(1);
-    expect(addBoard).toHaveBeenCalledWith(
-      expect.objectContaining({ groupId: 1, id: 999, title: "테스트 세션" }),
-    );
 
     expect(fetchBoards).toHaveBeenCalledTimes(1);
     expect(fetchBoards).toHaveBeenCalledWith(1);
@@ -188,10 +205,6 @@ describe("ProblemBoard.vue", () => {
   });
 
   it("title/selectedProblems가 부족하면 postBoard를 호출하지 않는다", async () => {
-    const postSpy = vi
-      .spyOn(problemService, "postBoard")
-      .mockResolvedValue({ id: 1 });
-
     const wrapper = mount(ProblemBoard, {
       global: {
         stubs: {
@@ -206,8 +219,10 @@ describe("ProblemBoard.vue", () => {
 
     // 아무것도 세팅 안함 -> canPost=false
     await wrapper.get('[data-test="submit"]').trigger("click");
-    await nextTick();
+    await flushPromises();
 
-    expect(postSpy).not.toHaveBeenCalled();
+    expect(addBoard).not.toHaveBeenCalled();
+    expect(fetchBoards).not.toHaveBeenCalled();
+    expect(pushMock).not.toHaveBeenCalled();
   });
 });

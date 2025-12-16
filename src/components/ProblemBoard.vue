@@ -4,16 +4,17 @@ import { useRouter, useRoute } from "vue-router";
 import ProblemSearch from "./ProblemSearch.vue";
 import BoardHeader from "./board/BoardHeader.vue";
 import SelectedProblemsPanel from "./board/SelectedProblemsPanel.vue";
-import { problemService } from "@/services/problemService";
 import {
   addBoard,
   updateBoard,
   fetchBoards,
   fetchBoardById,
 } from "../data/boardStore";
+import { useAuthStore } from "../data/authStore";
 
 const router = useRouter();
 const route = useRoute();
+const authStore = useAuthStore();
 
 const boardId = computed(() => route?.params?.boardId ?? null);
 const isEditMode = computed(() => !!boardId.value);
@@ -28,21 +29,56 @@ const title = ref("");
 const deadline = ref("");
 const selectedProblems = ref([]);
 
+const currentUserId = computed(() => authStore.user.value?.id ?? null);
+
+function normalizeSelectedProblem(p) {
+  if (!p) return null;
+
+  // 구버전/예외: 숫자 id만 오는 경우
+  if (typeof p === "number" || typeof p === "string") {
+    const id = Number(p);
+    return Number.isFinite(id) ? { id } : null;
+  }
+
+  // ✅ 비정상 케이스: p.id가 객체인 경우 (스샷의 [object Object] 원인)
+  if (p.id && typeof p.id === "object") {
+    const inner = p.id;
+    const id = Number(inner.id);
+    if (!Number.isFinite(id)) return null;
+
+    return {
+      id,
+      title: inner.title ?? p.title ?? null,
+      difficulty: inner.difficulty ?? p.difficulty ?? null,
+    };
+  }
+
+  // 정상 케이스
+  const id = Number(p.id);
+  if (!Number.isFinite(id)) return null;
+
+  return {
+    id,
+    title: p.title ?? p.titleKo ?? null,
+    difficulty: p.difficulty ?? null,
+  };
+}
+
 onMounted(async () => {
   if (isEditMode.value) {
     try {
+      const groupId = Number(route.params.groupId);
       // 보드 ID를 이용해 Store에서 기존 데이터를 가져옵니다.
-      const existingBoard = await fetchBoardById(boardId.value);
+      const existingBoard = await fetchBoardById(groupId, boardId.value);
 
       // 폼 필드 초기화
       title.value = existingBoard.title;
       deadline.value = existingBoard.deadline || "";
 
       // 문제 목록 초기화 (문제 상세 데이터 구조가 필요합니다.)
-      // 여기서는 임시로 문제를 로드하는 과정만 표시합니다.
-      selectedProblems.value = existingBoard.problems
-        ? [...existingBoard.problems]
-        : [];
+      selectedProblems.value = (existingBoard.problems || [])
+        .map(normalizeSelectedProblem)
+        .filter(Boolean);
     } catch (e) {
       console.error("보드 데이터 로드 실패:", e);
     }
@@ -56,8 +92,13 @@ const selectedProblemIds = computed(() =>
 
 // 문제 추가 (중복 방지)
 function handleAddProblem(problem) {
-  const exists = selectedProblems.value.some((p) => p.id === problem.id);
-  if (!exists) selectedProblems.value.push(problem);
+  const normalized = normalizeSelectedProblem(problem);
+  if (!normalized) return;
+
+  const exists = selectedProblems.value.some(
+    (p) => Number(p.id) === Number(normalized.id),
+  );
+  if (!exists) selectedProblems.value.push(normalized);
 }
 
 // 문제 제거
@@ -88,7 +129,6 @@ const canPost = computed(
 );
 
 const isPosting = ref(false);
-const postResult = ref(null);
 const postError = ref("");
 
 async function handlePost() {
@@ -100,33 +140,26 @@ async function handlePost() {
 
   if (!canPost.value || isPosting.value) return;
 
+  if (!currentUserId.value) {
+    postError.value = "로그인이 필요합니다.";
+    return;
+  }
+
   isPosting.value = true;
   postError.value = "";
-  postResult.value = null;
 
   try {
-    const payload = {
+    const boardPayload = {
+      groupId: gid,
+      requesterId: currentUserId.value,
       title: title.value.trim(),
       deadline: deadline.value || null,
-      problems: selectedProblems.value.map((p, index) => ({
-        id: p.id,
-        order: index + 1,
-      })),
+      // content 필드는 아직 UI가 없어서 빈 문자열로 처리 (원하면 textarea 추가)
+      content: "",
+      problems: selectedProblems.value.map((p) => ({ ...p })),
     };
 
-    // API 호출 (실제 백엔드는 payload를 저장)
-    const res = await problemService.postBoard(payload);
-    postResult.value = res;
-
-    //TODO: integrate backend
-    addBoard({
-      id: res?.id || Date.now(),
-      groupId: gid,
-      title: payload.title,
-      deadline: payload.deadline,
-      problems: selectedProblems.value,
-      // problemsCount: payload.problems.length,
-    });
+    await addBoard(boardPayload);
 
     await fetchBoards(gid);
 
@@ -153,36 +186,27 @@ async function handleUpdate() {
 
   if (!canPost.value || isPosting.value) return;
 
+  if (!currentUserId.value) {
+    postError.value = "로그인이 필요합니다.";
+    return;
+  }
+
   isPosting.value = true;
   postError.value = "";
 
   try {
-    // 1) 백엔드로 보낼 payload (문제는 id + order만)
-    //    - 실제 백엔드에는 보통 문제 전체 객체를 안 넣고
-    //      { problemId, order } 만 보관한다.
-    const apiPayload = {
-      id: boardId.value,
+    const boardPayload = {
+      id: Number(boardId.value),
       groupId: gid,
+      requesterId: currentUserId.value,
       title: title.value.trim(),
       deadline: deadline.value || null,
-      problems: selectedProblems.value.map((p, index) => ({
-        id: p.id,
-        order: index + 1,
-      })),
+      content: "",
+      problems: selectedProblems.value.map((p) => ({ ...p })),
     };
 
-    // 2) Mock DB에는 "문제 전체 객체"를 그대로 저장
-    const storePayload = {
-      id: boardId.value,
-      groupId: gid,
-      title: apiPayload.title,
-      deadline: apiPayload.deadline,
-      problems: [...selectedProblems.value],
-    };
+    await updateBoard(boardPayload);
 
-    updateBoard(storePayload); // TODO: integrate backend after boardApi.updateBoard(apiPayload);
-
-    // 3. 목록 데이터 갱신
     await fetchBoards(gid);
 
     // 4. 목록 페이지로 이동
@@ -238,6 +262,13 @@ async function handleSubmit() {
           </div>
         </section>
       </div>
+
+      <p
+        v-if="postError"
+        class="mt-3 text-sm text-red-500"
+      >
+        {{ postError }}
+      </p>
     </div>
   </div>
 </template>
