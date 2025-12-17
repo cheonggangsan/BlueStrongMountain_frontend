@@ -11,11 +11,19 @@ const leavingGroupId = ref(null);
 
 const searchQuery = ref("");
 
-onMounted(async () => {
-  await fetchGroups();
-});
-
 const currentUserId = computed(() => authStore.user.value?.id ?? null);
+
+onMounted(async () => {
+  const uid = currentUserId.value;
+  if (!uid) {
+    console.warn(
+      "[GroupList] currentUserId가 없어 그룹 목록을 불러오지 않습니다.",
+    );
+    return;
+  }
+
+  await fetchGroups({ requesterId: uid });
+});
 
 function hasId(list, uid) {
   if (!uid || !Array.isArray(list)) return false;
@@ -35,6 +43,13 @@ function isOwnerOrManager(group) {
 function isJoinedGroup(group) {
   const uid = currentUserId.value;
   if (!uid || !group) return false;
+
+  const hasMembershipArrays =
+    Array.isArray(group.managerIds) || Array.isArray(group.memberIds);
+
+  if (!hasMembershipArrays) {
+    return true;
+  }
 
   const isOwner = Number(group.ownerId) === Number(uid);
   const isManager = hasId(group.managerIds, uid);
@@ -64,8 +79,14 @@ function goEditGroup(groupId) {
 async function handleLeaveGroup(groupId) {
   const target = groups.value.find((g) => g.id === groupId);
   const name = target?.name ?? "이 그룹";
+  const uid = currentUserId.value;
 
-  if (currentUserId.value && target?.ownerId === currentUserId.value) {
+  if (!uid) {
+    window.alert("로그인 정보가 없어 그룹을 탈퇴할 수 없습니다.");
+    return;
+  }
+
+  if (target?.ownerId === uid) {
     window.alert(
       "이 그룹의 소유자는 바로 탈퇴할 수 없습니다.\n" +
         "그룹 수정 > 소유자 변경에서 소유권을 다른 멤버에게 넘긴 뒤 탈퇴해 주세요.",
@@ -81,7 +102,7 @@ async function handleLeaveGroup(groupId) {
 
   try {
     leavingGroupId.value = groupId;
-    await leaveGroup(groupId); // 실제로는 백엔드 API 호출 자리
+    await leaveGroup(groupId, { requesterId: uid });
   } catch (e) {
     console.error(e);
     alert("그룹 탈퇴 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
