@@ -86,7 +86,7 @@ async function handleLeaveGroup(groupId) {
     return;
   }
 
-  if (target?.ownerId === uid) {
+  if (Number(target?.ownerId) === Number(uid)) {
     window.alert(
       "이 그룹의 소유자는 바로 탈퇴할 수 없습니다.\n" +
         "그룹 수정 > 소유자 변경에서 소유권을 다른 멤버에게 넘긴 뒤 탈퇴해 주세요.",
