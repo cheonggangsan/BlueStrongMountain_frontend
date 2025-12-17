@@ -59,12 +59,14 @@ vi.mock("../src/data/groupStore", () => {
   const fetchGroupById = vi.fn();
   const updateGroup = vi.fn();
   const changeGroupOwner = vi.fn();
+  const fetchGroupUsers = vi.fn();
 
   return {
     __esModule: true,
     fetchGroupById,
     updateGroup,
     changeGroupOwner,
+    fetchGroupUsers,
   };
 });
 
@@ -92,6 +94,7 @@ import {
   fetchGroupById,
   updateGroup,
   changeGroupOwner,
+  fetchGroupUsers,
 } from "../src/data/groupStore";
 import { user as authUser } from "../src/data/authStore";
 import { members as membersRef } from "../src/data/memberStore";
@@ -108,6 +111,8 @@ describe("GroupEdit.vue", () => {
     fetchGroupById.mockReset();
     updateGroup.mockReset();
     changeGroupOwner.mockReset();
+    fetchGroupUsers.mockReset();
+    fetchGroupUsers.mockResolvedValue([]);
     routerMock.push.mockReset();
     routerMock.back.mockReset();
   });
@@ -126,7 +131,8 @@ describe("GroupEdit.vue", () => {
     await flushPromises();
 
     expect(fetchGroupById).toHaveBeenCalledTimes(1);
-    expect(fetchGroupById).toHaveBeenCalledWith("1");
+    expect(fetchGroupById).toHaveBeenCalledWith("1", { requesterId: 1 });
+    expect(fetchGroupUsers).toHaveBeenCalledWith("1", { requesterId: 1 });
 
     expect(wrapper.text()).not.toContain("그룹 정보를 불러오는 중입니다...");
 
@@ -172,7 +178,6 @@ describe("GroupEdit.vue", () => {
       managerIds: [1],
       memberIds: [1, 2],
     });
-
     updateGroup.mockResolvedValue(true);
 
     const wrapper = mount(GroupEdit);
@@ -193,7 +198,10 @@ describe("GroupEdit.vue", () => {
     await flushPromises();
 
     expect(updateGroup).toHaveBeenCalledTimes(1);
-    expect(updateGroup).toHaveBeenCalledWith("1", payload);
+    expect(updateGroup).toHaveBeenCalledWith("1", {
+      ...payload,
+      requesterId: 1,
+    });
 
     expect(routerMock.push).toHaveBeenCalledTimes(1);
     expect(routerMock.push).toHaveBeenCalledWith({ name: "GroupList" });
@@ -208,7 +216,6 @@ describe("GroupEdit.vue", () => {
       managerIds: [1],
       memberIds: [1, 2],
     });
-
     updateGroup.mockRejectedValue(new Error("서버 오류"));
 
     const wrapper = mount(GroupEdit);
@@ -299,6 +306,10 @@ describe("GroupEdit.vue", () => {
       managerIds: [1],
       memberIds: [1, 2],
     });
+    fetchGroupUsers.mockResolvedValue([
+      { id: 1, name: "현재소유자", nickname: "owner", role: "OWNER" },
+      { id: 2, name: "새소유자", nickname: "newOwner", role: "MEMBER" },
+    ]);
 
     const wrapper = mount(GroupEdit);
     await flushPromises();
