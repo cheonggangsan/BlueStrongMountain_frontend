@@ -2,58 +2,150 @@ import httpClient from "./httpClient";
 
 /**
  * GET /api/v1/groups
- * 그룹 리스트 조회
+ *
+ * 쿼리:
+ *  - requesterId: number (required)
+ *  - name: string (optional, 검색어)
+ *
+ * 응답: GroupSummaryResponse[]
  */
-export async function fetchGroups() {
-  const res = await httpClient.get("/v1/groups");
+export async function fetchGroups({ requesterId, name } = {}) {
+  const res = await httpClient.get("/groups", {
+    params: {
+      requesterId,
+      name,
+    },
+  });
   return res.data;
 }
 
 /**
  * DELETE /api/v1/groups/{groupId}/members/me
- * 현재 로그인한 사용자가 그룹에서 탈퇴
+ *
+ * 쿼리:
+ *  - requesterId: number
+ *
+ * 응답: BasicResponse { success: boolean }
  */
-export async function leaveGroup(groupId) {
-  const res = await httpClient.delete(`/v1/groups/${groupId}/members/me`);
-  return res.data;
+export async function leaveGroup({ groupId, requesterId }) {
+  const res = await httpClient.delete(`/groups/${groupId}/members/me`, {
+    params: { requesterId },
+  });
+  return res.data; // BasicResponse
 }
 
 /**
  * POST /api/v1/groups
- * 새 그룹 생성
+ *
+ * 쿼리:
+ *  - requesterId: number (required)
+ *
+ * Body: GroupCreateRequest
+ *  {
+ *    title: string,
+ *    managerIds: number[],
+ *    memberIds: number[],
+ *    visibility: string,
+ *    description: string
+ *  }
+ *
+ * 응답: BasicResponse { success: boolean }
  */
-export async function createGroup(payload) {
-  const res = await httpClient.post("/v1/groups", payload);
-  return res.data;
+export async function createGroup({
+  requesterId,
+  title,
+  managerIds,
+  memberIds,
+  visibility,
+  description,
+}) {
+  const res = await httpClient.post(
+    "/groups",
+    {
+      title,
+      managerIds,
+      memberIds,
+      visibility,
+      description,
+    },
+    {
+      params: { requesterId },
+    },
+  );
+  return res.data; // BasicResponse
 }
 
 /**
  * GET /api/v1/groups/{groupId}
  * 그룹 상세 조회
  */
-export async function fetchGroupById(groupId) {
-  const res = await httpClient.get(`/v1/groups/${groupId}`);
+export async function fetchGroupById(groupId, { requesterId } = {}) {
+  const res = await httpClient.get(`/groups/${groupId}/detail`, {
+    params: { requesterId },
+  });
   return res.data;
 }
 
 /**
- * PUT /api/v1/groups/{groupId}
- * 그룹 수정
+ * PATCH /api/v1/groups/{groupId}
+ * query: requesterId
+ * body: GroupUpdateRequest
  */
-export async function updateGroup(groupId, payload) {
-  const res = await httpClient.put(`/v1/groups/${groupId}`, payload);
-  return res.data;
+export async function updateGroup({
+  groupId,
+  requesterId,
+  title,
+  visibility,
+  description,
+  managerIds,
+  memberIds,
+} = {}) {
+  const body = {
+    title,
+    visibility,
+    description,
+  };
+
+  if (Array.isArray(managerIds)) body.managerIds = managerIds;
+  if (Array.isArray(memberIds)) body.memberIds = memberIds;
+
+  const res = await httpClient.patch(`/groups/${groupId}`, body, {
+    params: { requesterId },
+  });
+
+  return res.data; // BasicResponse or updated object
 }
 
 /**
- * POST /api/v1/groups/{groupId}/owner
- * 그룹 소유자 변경
- * (실제 백엔드 스펙에 맞게 엔드포인트/메서드는 나중에 조정)
+ * PATCH /api/v1/groups/{groupId}/owner
+ *
+ * 쿼리:
+ *  - requesterId: number
+ *
+ * Body: OwnerChangeRequest { newOwnerId }
+ *
+ * 응답: BasicResponse { success: boolean }
  */
-export async function changeGroupOwner(groupId, { requesterId, newOwnerId }) {
-  const res = await httpClient.post(`/v1/groups/${groupId}/owner`, {
-    requesterId,
-    newOwnerId,
+export async function changeGroupOwner({ groupId, requesterId, newOwnerId }) {
+  const res = await httpClient.patch(
+    `/groups/${groupId}/owner`,
+    { newOwnerId },
+    {
+      params: { requesterId },
+    },
+  );
+  return res.data; // BasicResponse
+}
+
+/**
+ * GET /api/v1/groups/{groupId}/users
+ * 그룹 유저 목록 조회
+ * query: requesterId
+ * resp: GroupUserDto[]
+ */
+export async function fetchGroupUsers(groupId, { requesterId } = {}) {
+  const res = await httpClient.get(`/groups/${groupId}/users`, {
+    params: { requesterId },
   });
   return res.data;
 }
