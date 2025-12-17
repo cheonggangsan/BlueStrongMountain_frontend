@@ -19,6 +19,7 @@ onMounted(async () => {
     console.warn(
       "[GroupList] currentUserId가 없어 그룹 목록을 불러오지 않습니다.",
     );
+    window.alert("로그인이 필요합니다.");
     return;
   }
 
