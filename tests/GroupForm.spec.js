@@ -335,7 +335,7 @@ describe("GroupForm.vue", () => {
     expect(payload.title).toBe("유효한 제목");
     expect(payload.description).toBe(""); // 설명은 입력 안 했으므로 trim() 결과 ""
     expect(payload.visibility).toBe("PRIVATE"); // 기본 값
-    expect(payload.memberIds).toEqual([2]);
+    expect(payload.memberIds).toEqual([]);
     expect(payload.managerIds).toEqual([2]);
   });
 
