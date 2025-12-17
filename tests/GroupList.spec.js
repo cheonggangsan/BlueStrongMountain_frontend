@@ -173,7 +173,7 @@ describe("GroupList.vue", () => {
     await nextTick();
 
     // owner 탈퇴 방어 로직에 걸리면 안 되므로, 정확히 id:3에 대해 호출됐는지만 체크
-    expect(leaveGroupMock).toHaveBeenCalledWith(3);
+    expect(leaveGroupMock).toHaveBeenCalledWith(3, { requesterId: 1 });
 
     confirmSpy.mockRestore();
     alertSpy.mockRestore();
