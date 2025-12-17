@@ -150,9 +150,19 @@ router.beforeEach(async (to, from, next) => {
       return next({ name: "GroupList" });
     }
 
+    const userId = auth.user.value?.id;
+    if (!userId) {
+      return next({
+        name: "Login",
+        query: { redirect: to.fullPath },
+        replace: true,
+      });
+    }
+    const uid = Number(userId);
+
     let group;
     try {
-      group = await fetchGroupById(groupId);
+      group = await fetchGroupById(groupId, { requesterId: uid });
     } catch (e) {
       console.error("[router] fetchGroupById error:", e);
       window.alert("그룹 정보를 불러올 수 없습니다.");
@@ -164,16 +174,6 @@ router.beforeEach(async (to, from, next) => {
       return next({ name: "GroupList" });
     }
 
-    const userId = auth.user.value?.id;
-    if (!userId) {
-      return next({
-        name: "Login",
-        query: { redirect: to.fullPath },
-        replace: true,
-      });
-    }
-
-    const uid = Number(userId);
     const ownerId = group.ownerId != null ? Number(group.ownerId) : null;
     const managerIds = Array.isArray(group.managerIds)
       ? group.managerIds.map(Number)
