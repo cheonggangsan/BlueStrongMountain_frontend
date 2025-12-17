@@ -1,6 +1,7 @@
 // tests/GroupCreate.spec.js
 import { mount, flushPromises } from "@vue/test-utils";
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { ref } from "vue";
 
 // 1) vue-router mock
 vi.mock("vue-router", () => {
@@ -24,6 +25,16 @@ vi.mock("../src/data/groupStore", () => {
   return {
     __esModule: true,
     createGroup,
+  };
+});
+
+// 2.5) authStore mock 추가
+vi.mock("../src/data/authStore", () => {
+  const user = ref({ id: 1, name: "테스터", nickname: "tester" });
+  return {
+    __esModule: true,
+    useAuthStore: () => ({ user }),
+    user,
   };
 });
 
@@ -65,6 +76,7 @@ vi.mock("../src/components/group/GroupForm.vue", () => ({
 import GroupCreate from "../src/components/group/GroupCreate.vue";
 import { createGroup } from "../src/data/groupStore";
 import { router as routerMock } from "vue-router";
+import { user as authUser } from "../src/data/authStore";
 
 describe("GroupCreate.vue", () => {
   beforeEach(() => {
@@ -72,6 +84,8 @@ describe("GroupCreate.vue", () => {
     createGroup.mockReset();
     routerMock.push.mockReset();
     routerMock.back.mockReset();
+
+    authUser.value = { id: 1, name: "테스터", nickname: "tester" };
   });
 
   it("submit 이벤트를 받으면 createGroup 호출 후 GroupList로 이동한다", async () => {
@@ -85,17 +99,16 @@ describe("GroupCreate.vue", () => {
 
     // 1) createGroup 가 payload와 함께 호출되었는지
     expect(createGroup).toHaveBeenCalledTimes(1);
-    const payload = createGroup.mock.calls[0][0];
-    expect(payload).toEqual({
+    expect(createGroup).toHaveBeenCalledWith({
       title: "테스트 그룹",
       description: "설명",
       visibility: "PRIVATE",
       memberIds: [1],
       managerIds: [1],
+      requesterId: 1,
     });
 
     // 2) 성공 후 router.push({ name: 'GroupList' }) 호출 여부
-    expect(routerMock.push).toHaveBeenCalledTimes(1);
     expect(routerMock.push).toHaveBeenCalledWith({ name: "GroupList" });
   });
 
