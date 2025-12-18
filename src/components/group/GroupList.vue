@@ -26,14 +26,33 @@ onMounted(async () => {
   await fetchGroups({ requesterId: uid });
 });
 
-/**
- * Real API 그룹 목록 응답에는 managerIds/memberIds가 없어 멤버십 판별이 불가함. 목록 필터링(isJoinedGroup)을 제거함.
- * TODO: 목록 응답에 myRole(OWNER/MANAGER/MEMBER) 또는 joined(boolean) 필드가 추가되면, GroupList에서 멤버십 기반 필터링/버튼 노출(매니저 수정권한 등)을 복구할 것.
- */
 function isOwner(group) {
+  if (!group) return false;
+  if (group.groupRole) return group.groupRole === "OWNER";
+
   const uid = currentUserId.value;
-  if (!uid || !group) return false;
+  if (!uid) return false;
+
   return Number(group.ownerId) === Number(uid);
+}
+
+function isManager(group) {
+  if (!group) return false;
+
+  if (group.groupRole) return group.groupRole === "MANAGER";
+
+  const uid = currentUserId.value;
+  if (!uid) return false;
+  const mids = Array.isArray(group.managerIds)
+    ? group.managerIds.map(Number)
+    : [];
+
+  if (isOwner(group)) return false;
+  return mids.includes(Number(uid));
+}
+
+function canEditGroup(group) {
+  return isOwner(group) || isManager(group);
 }
 
 function goGroup(groupId) {
@@ -64,7 +83,7 @@ async function handleLeaveGroup(groupId) {
     return;
   }
 
-  if (Number(target?.ownerId) === Number(uid)) {
+  if (isOwner(target)) {
     window.alert(
       "이 그룹의 소유자는 바로 탈퇴할 수 없습니다.\n" +
         "그룹 수정 > 소유자 변경에서 소유권을 다른 멤버에게 넘긴 뒤 탈퇴해 주세요.",
@@ -251,10 +270,17 @@ const filteredGroups = computed(() => {
               </span>
 
               <span
-                v-if="currentUserId && group.ownerId === currentUserId"
+                v-if="isOwner(group)"
                 class="inline-flex items-center gap-1 rounded-full bg-yellow-100 px-2 py-0.5 text-[10px] font-medium text-yellow-800 border border-yellow-200"
               >
                 ⭐ 내 소유 그룹
+              </span>
+
+              <span
+                v-else-if="isManager(group)"
+                class="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-700 border border-blue-100"
+              >
+                🛠 매니저
               </span>
             </div>
 
@@ -280,7 +306,7 @@ const filteredGroups = computed(() => {
 
               <!-- 그룹 수정 -->
               <button
-                v-if="isOwner(group)"
+                v-if="canEditGroup(group)"
                 type="button"
                 class="px-3 py-1.5 text-xs font-medium border rounded-lg bg-white text-gray-700 hover:bg-gray-50"
                 @click.stop="goEditGroup(group.id)"

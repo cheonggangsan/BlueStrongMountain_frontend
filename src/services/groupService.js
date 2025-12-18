@@ -57,6 +57,7 @@ export const groupService = {
       ownerId: g.ownerId,
       visibility: g.visibility,
       memberCount: g.memberCount,
+      groupRole: g.groupRole ?? null,
       createdAt: g.createdAt,
       updatedAt: g.updatedAt,
       description: g.description ?? "",
