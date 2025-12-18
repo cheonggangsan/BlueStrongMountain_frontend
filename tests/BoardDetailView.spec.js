@@ -145,7 +145,7 @@ describe("BoardDetailView.vue", () => {
     const wrapper = mount(BoardDetailView);
     await flushPromises();
 
-    expect(fetchGroupByIdMock).toHaveBeenCalledWith(1);
+    expect(fetchGroupByIdMock).toHaveBeenCalledWith(1, { requesterId: 1 });
     expect(fetchBoardByIdMock).toHaveBeenCalledWith(1, 10);
     expect(getBoardUserStatusMock).toHaveBeenCalledWith({
       groupId: 1,
@@ -258,22 +258,27 @@ describe("BoardDetailView.vue", () => {
     expect(headerText).not.toContain("집에갈까요");
   });
 
-  it("로그인하지 않은 경우 내 완료율 카드가 보이지 않고 '내 현황만 보기' 체크박스가 비활성화된다", async () => {
-    // user 를 null 로 변경
+  it("로그인하지 않은 경우 에러 메시지를 렌더링하고 API를 호출하지 않는다", async () => {
     const auth = useAuthStoreMock();
     auth.user.value = null;
 
-    setupSuccessMocks();
+    setupSuccessMocks(); // 호출되면 안 되지만, 있어도 무관
 
     const wrapper = mount(BoardDetailView);
     await flushPromises();
 
-    // 내 완료율 카드가 없음
-    expect(wrapper.text()).not.toContain("내 완료율");
+    // 현재 구현: 로그인 없으면 catch로 빠져 에러 화면 렌더링
+    expect(wrapper.text()).toContain(
+      "보드 정보를 불러오는 중 오류가 발생했습니다.",
+    );
 
-    // 체크박스 disabled
-    const checkbox = wrapper.get("input[type='checkbox']");
-    expect(checkbox.attributes("disabled")).toBeDefined();
+    // 로그인 없으면 API 호출 자체가 없어야 정상
+    expect(fetchGroupByIdMock).not.toHaveBeenCalled();
+    expect(fetchBoardByIdMock).not.toHaveBeenCalled();
+    expect(getBoardUserStatusMock).not.toHaveBeenCalled();
+
+    // 체크박스 영역 자체가 렌더링되지 않음 (error 분기)
+    expect(wrapper.find("input[type='checkbox']").exists()).toBe(false);
   });
 
   it("상단 '보드 목록으로' 버튼 클릭 시 BoardList 라우트로 이동한다", async () => {

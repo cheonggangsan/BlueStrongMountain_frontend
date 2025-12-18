@@ -17,7 +17,16 @@ const group = ref(null);
 onMounted(async () => {
   // 라우터 설정이 { path: '/groups/:groupId', ... } 라고 가정
   const groupId = route.params.groupId;
-  group.value = await fetchGroupById(groupId); // ownerId, managerIds 포함
+  const uid = currentUserId.value;
+
+  if (!uid) {
+    console.warn(
+      "[BoardList] currentUserId가 없어 그룹 정보를 불러오지 않습니다.",
+    );
+    return;
+  }
+
+  group.value = await fetchGroupById(groupId, { requesterId: uid });
   await fetchBoards(groupId);
 });
 

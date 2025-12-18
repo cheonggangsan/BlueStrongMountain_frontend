@@ -151,8 +151,13 @@ onMounted(async () => {
     const gid = Number(route.params.groupId);
     const bid = Number(route.params.boardId);
 
+    const uid = currentUserId.value;
+    if (!uid) {
+      throw new Error("로그인 정보가 없어 보드 정보를 불러올 수 없습니다.");
+    }
+
     const [g, b, s] = await Promise.all([
-      fetchGroupById(gid),
+      fetchGroupById(gid, { requesterId: uid }),
       fetchBoardById(gid, bid),
       getBoardUserStatus({
         groupId: gid,
