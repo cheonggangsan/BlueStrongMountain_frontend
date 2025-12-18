@@ -51,6 +51,14 @@ function findGroupItemByName(wrapper, groupName) {
   return items.find((li) => li.text().includes(groupName));
 }
 
+function hasButton(item, label) {
+  return item.findAll("button").some((btn) => btn.text().includes(label));
+}
+
+function findButton(item, label) {
+  return item.findAll("button").find((btn) => btn.text().includes(label));
+}
+
 describe("GroupList.vue", () => {
   beforeEach(() => {
     // 유저(1)가 owner / manager / member 인 그룹 + 완전 관계없는 그룹
@@ -60,8 +68,7 @@ describe("GroupList.vue", () => {
         name: "내가 owner인 그룹",
         description: "owner",
         ownerId: 1,
-        managerIds: [],
-        memberIds: [2, 3],
+        groupRole: "OWNER",
         memberCount: 3,
         updatedAt: "2025-01-01T12:00:00.000Z",
       },
@@ -70,8 +77,7 @@ describe("GroupList.vue", () => {
         name: "내가 manager인 그룹",
         description: "manager",
         ownerId: 2,
-        managerIds: [1],
-        memberIds: [2, 3],
+        groupRole: "MANAGER",
         memberCount: 3,
         updatedAt: "2025-01-02T12:00:00.000Z",
       },
@@ -80,8 +86,7 @@ describe("GroupList.vue", () => {
         name: "내가 member만인 그룹",
         description: "member only",
         ownerId: 3,
-        managerIds: [3],
-        memberIds: [1, 4, 5],
+        groupRole: "MEMBER",
         memberCount: 3,
         updatedAt: "2025-01-03T12:00:00.000Z",
       },
@@ -116,33 +121,73 @@ describe("GroupList.vue", () => {
     expect(text).toContain("내가 member만인 그룹");
   });
 
-  // TODO: 요구사항 변경 시 manager도 수정 가능하도록 변경 필요
-  it("owner 그룹에만 '수정' 버튼이 보이고, member-only 그룹에는 보이지 않는다", async () => {
+  it("OWNER/MANAGER 그룹에는 '수정' 버튼이 보이고, MEMBER 그룹에는 보이지 않는다 (groupRole 기준)", async () => {
     const wrapper = mount(GroupList);
     await flushPromises();
     await nextTick();
 
     const ownerItem = findGroupItemByName(wrapper, "내가 owner인 그룹");
     const managerItem = findGroupItemByName(wrapper, "내가 manager인 그룹");
-    const memberOnlyItem = findGroupItemByName(wrapper, "내가 member만인 그룹");
+    const memberItem = findGroupItemByName(wrapper, "내가 member만인 그룹");
 
-    // 방어적으로 먼저 존재 확인
     expect(ownerItem, "owner 그룹 li를 찾지 못했습니다").toBeTruthy();
     expect(managerItem, "manager 그룹 li를 찾지 못했습니다").toBeTruthy();
-    expect(
-      memberOnlyItem,
-      "member-only 그룹 li를 찾지 못했습니다",
-    ).toBeTruthy();
+    expect(memberItem, "member 그룹 li를 찾지 못했습니다").toBeTruthy();
 
-    const hasEdit = (item) =>
-      item.findAll("button").some((btn) => btn.text().includes("수정"));
-
-    expect(hasEdit(ownerItem)).toBe(true); // owner ⇒ 수정 버튼 있어야 함
-    expect(hasEdit(managerItem)).toBe(false); // manager ⇒ 없어야 함
-    expect(hasEdit(memberOnlyItem)).toBe(false); // 단순 member ⇒ 없어야 함
+    expect(hasButton(ownerItem, "수정")).toBe(true);
+    expect(hasButton(managerItem, "수정")).toBe(true);
+    expect(hasButton(memberItem, "수정")).toBe(false);
   });
 
-  it("member-only 그룹에서 '그룹 탈퇴' 클릭 시 leaveGroup이 호출된다", async () => {
+  it("MANAGER가 '수정' 클릭 시 GroupEdit로 이동한다", async () => {
+    const wrapper = mount(GroupList);
+    await flushPromises();
+    await nextTick();
+
+    const managerItem = findGroupItemByName(wrapper, "내가 manager인 그룹");
+    expect(managerItem).toBeTruthy();
+
+    const editBtn = findButton(managerItem, "수정");
+    expect(editBtn, "'수정' 버튼을 찾지 못했습니다").toBeTruthy();
+
+    await editBtn.trigger("click");
+    await flushPromises();
+    await nextTick();
+
+    expect(pushMock).toHaveBeenCalledTimes(1);
+    expect(pushMock).toHaveBeenCalledWith({
+      name: "GroupEdit",
+      params: { groupId: 2 },
+    });
+  });
+
+  it("OWNER는 '그룹 탈퇴' 클릭 시 차단되고 leaveGroup이 호출되지 않는다", async () => {
+    const confirmSpy = vi.spyOn(window, "confirm");
+    const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => {});
+
+    const wrapper = mount(GroupList);
+    await flushPromises();
+    await nextTick();
+
+    const ownerItem = findGroupItemByName(wrapper, "내가 owner인 그룹");
+    expect(ownerItem).toBeTruthy();
+
+    const leaveBtn = findButton(ownerItem, "그룹 탈퇴");
+    expect(leaveBtn, "'그룹 탈퇴' 버튼을 찾지 못했습니다").toBeTruthy();
+
+    await leaveBtn.trigger("click");
+    await flushPromises();
+    await nextTick();
+
+    expect(alertSpy).toHaveBeenCalled(); // 차단 안내
+    expect(confirmSpy).not.toHaveBeenCalled(); // confirm까지 가지 않음
+    expect(leaveGroupMock).not.toHaveBeenCalled();
+
+    confirmSpy.mockRestore();
+    alertSpy.mockRestore();
+  });
+
+  it("MEMBER 그룹에서 '그룹 탈퇴' 클릭 시 leaveGroup이 호출된다", async () => {
     const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
     const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => {});
 
@@ -150,20 +195,16 @@ describe("GroupList.vue", () => {
     await flushPromises();
     await nextTick();
 
-    const memberOnlyItem = findGroupItemByName(wrapper, "내가 member만인 그룹");
-    expect(memberOnlyItem).toBeTruthy();
+    const memberItem = findGroupItemByName(wrapper, "내가 member만인 그룹");
+    expect(memberItem).toBeTruthy();
 
-    const leaveButton = memberOnlyItem
-      .findAll("button")
-      .find((btn) => btn.text().includes("그룹 탈퇴"));
+    const leaveBtn = findButton(memberItem, "그룹 탈퇴");
+    expect(leaveBtn, "'그룹 탈퇴' 버튼을 찾지 못했습니다").toBeTruthy();
 
-    expect(leaveButton, "'그룹 탈퇴' 버튼을 찾지 못했습니다").toBeTruthy();
-
-    await leaveButton.trigger("click");
+    await leaveBtn.trigger("click");
     await flushPromises();
     await nextTick();
 
-    // owner 탈퇴 방어 로직에 걸리면 안 되므로, 정확히 id:3에 대해 호출됐는지만 체크
     expect(leaveGroupMock).toHaveBeenCalledWith(3, { requesterId: 1 });
 
     confirmSpy.mockRestore();
