@@ -37,7 +37,18 @@ function isOwner(group) {
 }
 
 function isManager(group) {
-  return !!group && group.groupRole === "MANAGER";
+  if (!group) return false;
+
+  if (group.groupRole) return group.groupRole === "MANAGER";
+
+  const uid = currentUserId.value;
+  if (!uid) return false;
+  const mids = Array.isArray(group.managerIds)
+    ? group.managerIds.map(Number)
+    : [];
+
+  if (isOwner(group)) return false;
+  return mids.includes(Number(uid));
 }
 
 function canEditGroup(group) {
@@ -266,7 +277,7 @@ const filteredGroups = computed(() => {
               </span>
 
               <span
-                v-if="isManager(group)"
+                v-else-if="isManager(group)"
                 class="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-700 border border-blue-100"
               >
                 🛠 매니저
