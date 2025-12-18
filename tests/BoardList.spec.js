@@ -119,7 +119,7 @@ describe("BoardList.vue", () => {
     mount(BoardList);
     await flushPromises();
 
-    expect(fetchGroupByIdMock).toHaveBeenCalledWith(1);
+    expect(fetchGroupByIdMock).toHaveBeenCalledWith(1, { requesterId: 1 });
     expect(fetchBoardsMock).toHaveBeenCalledWith(1);
   });
 
