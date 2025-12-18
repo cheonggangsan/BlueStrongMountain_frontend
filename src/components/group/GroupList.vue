@@ -26,37 +26,14 @@ onMounted(async () => {
   await fetchGroups({ requesterId: uid });
 });
 
-function hasId(list, uid) {
-  if (!uid || !Array.isArray(list)) return false;
-  return list.some((id) => Number(id) === Number(uid));
-}
-
-function isOwnerOrManager(group) {
+/**
+ * Real API 그룹 목록 응답에는 managerIds/memberIds가 없어 멤버십 판별이 불가함. 목록 필터링(isJoinedGroup)을 제거함.
+ * TODO: 목록 응답에 myRole(OWNER/MANAGER/MEMBER) 또는 joined(boolean) 필드가 추가되면, GroupList에서 멤버십 기반 필터링/버튼 노출(매니저 수정권한 등)을 복구할 것.
+ */
+function isOwner(group) {
   const uid = currentUserId.value;
   if (!uid || !group) return false;
-
-  const isOwner = Number(group.ownerId) === Number(uid);
-  const isManager = hasId(group.managerIds, uid);
-
-  return isOwner || isManager;
-}
-
-function isJoinedGroup(group) {
-  const uid = currentUserId.value;
-  if (!uid || !group) return false;
-
-  const hasMembershipArrays =
-    Array.isArray(group.managerIds) || Array.isArray(group.memberIds);
-
-  if (!hasMembershipArrays) {
-    return true;
-  }
-
-  const isOwner = Number(group.ownerId) === Number(uid);
-  const isManager = hasId(group.managerIds, uid);
-  const isMember = hasId(group.memberIds, uid);
-
-  return isOwner || isManager || isMember;
+  return Number(group.ownerId) === Number(uid);
 }
 
 function goGroup(groupId) {
@@ -116,7 +93,7 @@ const filteredGroups = computed(() => {
   const q = searchQuery.value.trim().toLowerCase();
   const uid = currentUserId.value;
 
-  let list = groups.value.filter((g) => isJoinedGroup(g));
+  let list = [...groups.value];
 
   if (!uid) {
     list = [];
@@ -303,7 +280,7 @@ const filteredGroups = computed(() => {
 
               <!-- 그룹 수정 -->
               <button
-                v-if="isOwnerOrManager(group)"
+                v-if="isOwner(group)"
                 type="button"
                 class="px-3 py-1.5 text-xs font-medium border rounded-lg bg-white text-gray-700 hover:bg-gray-50"
                 @click.stop="goEditGroup(group.id)"
