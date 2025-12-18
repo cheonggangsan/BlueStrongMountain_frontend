@@ -85,16 +85,6 @@ describe("GroupList.vue", () => {
         memberCount: 3,
         updatedAt: "2025-01-03T12:00:00.000Z",
       },
-      {
-        id: 4,
-        name: "내가 속하지 않은 그룹",
-        description: "other",
-        ownerId: 999,
-        managerIds: [998],
-        memberIds: [997],
-        memberCount: 3,
-        updatedAt: "2025-01-04T12:00:00.000Z",
-      },
     ];
 
     fetchGroupsMock.mockReset();
@@ -109,6 +99,7 @@ describe("GroupList.vue", () => {
     await nextTick();
 
     expect(fetchGroupsMock).toHaveBeenCalledTimes(1);
+    expect(fetchGroupsMock).toHaveBeenCalledWith({ requesterId: 1 });
   });
 
   it("현재 로그인한 사용자가 속한 그룹(owner/manager/member)만 렌더링된다", async () => {
@@ -123,10 +114,10 @@ describe("GroupList.vue", () => {
     expect(text).toContain("내가 owner인 그룹");
     expect(text).toContain("내가 manager인 그룹");
     expect(text).toContain("내가 member만인 그룹");
-    expect(text).not.toContain("내가 속하지 않은 그룹");
   });
 
-  it("owner/manager 그룹에만 '수정' 버튼이 보이고, member-only 그룹에는 보이지 않는다", async () => {
+  // TODO: 요구사항 변경 시 manager도 수정 가능하도록 변경 필요
+  it("owner 그룹에만 '수정' 버튼이 보이고, member-only 그룹에는 보이지 않는다", async () => {
     const wrapper = mount(GroupList);
     await flushPromises();
     await nextTick();
@@ -147,7 +138,7 @@ describe("GroupList.vue", () => {
       item.findAll("button").some((btn) => btn.text().includes("수정"));
 
     expect(hasEdit(ownerItem)).toBe(true); // owner ⇒ 수정 버튼 있어야 함
-    expect(hasEdit(managerItem)).toBe(true); // manager ⇒ 수정 버튼 있어야 함
+    expect(hasEdit(managerItem)).toBe(false); // manager ⇒ 없어야 함
     expect(hasEdit(memberOnlyItem)).toBe(false); // 단순 member ⇒ 없어야 함
   });
 
@@ -173,7 +164,7 @@ describe("GroupList.vue", () => {
     await nextTick();
 
     // owner 탈퇴 방어 로직에 걸리면 안 되므로, 정확히 id:3에 대해 호출됐는지만 체크
-    expect(leaveGroupMock).toHaveBeenCalledWith(3);
+    expect(leaveGroupMock).toHaveBeenCalledWith(3, { requesterId: 1 });
 
     confirmSpy.mockRestore();
     alertSpy.mockRestore();

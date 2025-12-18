@@ -6,6 +6,7 @@ import {
   fetchGroupById,
   updateGroup,
   changeGroupOwner,
+  fetchGroupUsers,
 } from "../../data/groupStore";
 import { members, ensureMembersLoaded } from "../../data/memberStore";
 import { useAuthStore } from "../../data/authStore";
@@ -45,15 +46,26 @@ const currentUserId = computed(() => authStore.user.value?.id ?? null);
 
 const isCurrentUserOwner = computed(() => {
   if (!group.value || !currentUserId.value) return false;
-  return group.value.ownerId === currentUserId.value;
+  return Number(group.value.ownerId) === Number(currentUserId.value);
 });
 
 // 그룹 멤버 목록 (owner 후보들)
 const ownerCandidates = computed(() => {
   if (!group.value) return [];
-  const idSet = new Set([...(group.value.memberIds || [])]);
+
+  // ✅ ownerId + managerIds + memberIds 전부 포함
+  const idSet = new Set();
+
+  if (group.value.ownerId != null) {
+    idSet.add(Number(group.value.ownerId));
+  }
+
+  (group.value.managerIds || []).forEach((id) => idSet.add(Number(id)));
+
+  (group.value.memberIds || []).forEach((id) => idSet.add(Number(id)));
+
   // members는 전체 유저 모음에서 해당 ID만 필터
-  return members.value.filter((m) => idSet.has(m.id));
+  return members.value.filter((m) => idSet.has(Number(m.id)));
 });
 
 const currentOwner = computed(() => {
@@ -75,7 +87,20 @@ onMounted(async () => {
   try {
     await ensureMembersLoaded(1000);
 
-    const g = await fetchGroupById(groupId);
+    const uid = currentUserId.value;
+    if (!uid) {
+      throw new Error("로그인 정보가 없어 그룹 정보를 불러올 수 없습니다.");
+    }
+
+    const [g, groupUsers] = await Promise.all([
+      fetchGroupById(groupId, { requesterId: uid }),
+      fetchGroupUsers(groupId, { requesterId: uid }),
+    ]);
+
+    const byId = new Map(members.value.map((m) => [Number(m.id), m]));
+    groupUsers.forEach((u) => byId.set(Number(u.id), u));
+    members.value = Array.from(byId.values());
+
     group.value = g;
 
     // ⚠️ 기억용 주석:
@@ -104,8 +129,16 @@ async function handleSubmit(payload) {
   apiError.value = "";
 
   try {
-    // 실제로는 PUT /api/v1/groups/{groupId}
-    await updateGroup(groupId, payload);
+    const uid = currentUserId.value;
+    if (!uid) {
+      apiError.value = "로그인 정보가 없어 스터디 그룹을 수정할 수 없습니다.";
+      return;
+    }
+
+    await updateGroup(groupId, {
+      ...payload,
+      requesterId: uid,
+    });
 
     router.push({ name: "GroupList" });
   } catch (e) {
@@ -154,17 +187,17 @@ async function handleChangeOwner() {
       return;
     }
 
-    // 실제 백엔드라면:
-    // await httpClient.patch(
-    //   `/api/v1/groups/${groupId}/owner?requesterId=${requesterId}`,
-    //   ownerCandidateId.value
-    // );
     const updated = await changeGroupOwner(groupId, {
       requesterId,
       newOwnerId: ownerCandidateId.value,
     });
 
-    group.value = updated;
+    // mock 케이스에 한해 group.value 갱신
+    if (updated && typeof updated === "object" && "id" in updated) {
+      group.value = updated;
+      ownerCandidateId.value = updated.ownerId ?? ownerCandidateId.value;
+    }
+
     ownerChangeMessage.value = "소유자가 변경되었습니다.";
   } catch (e) {
     console.error(e);

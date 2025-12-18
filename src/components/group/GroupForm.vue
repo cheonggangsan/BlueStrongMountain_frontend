@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import { searchMembers, members } from "../../data/memberStore";
 
 const props = defineProps({
@@ -59,21 +59,29 @@ function syncFromInitialGroup() {
   description.value = props.initialGroup.description || "";
   visibility.value = props.initialGroup.visibility || "PRIVATE";
 
-  // managerIds / memberIds 를 통해 selectedMembers 복원
-  const managerSet = new Set(props.initialGroup.managerIds || []);
-  const memberSet = new Set([
-    ...(props.initialGroup.memberIds || []),
-    ...managerSet,
-  ]);
+  const toNum = (v) => Number(v);
 
-  // memberStore 안에 있는 멤버 목록에서 찾아서 isManager 플래그 세팅
+  const managerSet = new Set((props.initialGroup.managerIds || []).map(toNum));
+  const memberSet = new Set(
+    [
+      ...(props.initialGroup.memberIds || []),
+      ...(props.initialGroup.managerIds || []),
+    ].map(toNum),
+  );
+
   selectedMembers.value = members.value
-    .filter((m) => memberSet.has(m.id))
+    .filter((m) => memberSet.has(toNum(m.id)))
     .map((m) => ({
       ...m,
-      isManager: managerSet.has(m.id),
+      isManager: managerSet.has(toNum(m.id)),
     }));
 }
+
+watch(
+  () => [props.initialGroup, members.value.length],
+  () => syncFromInitialGroup(),
+  { deep: true, immediate: true },
+);
 
 onMounted(() => {
   syncFromInitialGroup();
@@ -118,13 +126,21 @@ function toggleManager(userId) {
 const managerIds = computed(() =>
   selectedMembers.value.filter((m) => m.isManager).map((m) => m.id),
 );
-const memberIds = computed(() => selectedMembers.value.map((m) => m.id));
+const memberIds = computed(() =>
+  selectedMembers.value.filter((m) => !m.isManager).map((m) => m.id),
+);
+
+// 그룹 참여자 수 (관리자 + 멤버 중복 제거)
+const participantCount = computed(() => {
+  const set = new Set([...managerIds.value, ...memberIds.value]);
+  return set.size;
+});
 
 const canSubmit = computed(() => {
   return (
     title.value.trim().length > 0 &&
-    memberIds.value.length > 0 &&
-    managerIds.value.length > 0 && // 최소 1명은 관리자여야 함
+    participantCount.value > 0 && // 전체 참여자 1명 이상
+    managerIds.value.length > 0 && // 최소 1명은 관리자
     !props.submitting
   );
 });

@@ -1,13 +1,17 @@
 <script setup>
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import { useRouter } from "vue-router";
 import GroupForm from "./GroupForm.vue";
 import { createGroup } from "../../data/groupStore";
+import { useAuthStore } from "../../data/authStore";
 
 const router = useRouter();
+const authStore = useAuthStore();
 
 const submitting = ref(false);
 const apiError = ref("");
+
+const currentUserId = computed(() => authStore.user.value?.id ?? null);
 
 async function handleSubmit(payload) {
   if (submitting.value) return;
@@ -16,10 +20,18 @@ async function handleSubmit(payload) {
   apiError.value = "";
 
   try {
-    // 실제로는 여기서 POST /api/v1/groups 호출
-    await createGroup(payload);
+    const uid = currentUserId.value;
+    if (!uid) {
+      apiError.value = "로그인 정보가 없어 스터디 그룹을 생성할 수 없습니다.";
+      return;
+    }
 
-    // 성공 시 그룹 리스트로 이동
+    await createGroup({
+      ...payload,
+      // managerIds: Array.from(new Set([currentUserId.value, ...payload.managerIds])),
+      requesterId: uid,
+    });
+
     router.push({ name: "GroupList" });
   } catch (e) {
     console.error(e);

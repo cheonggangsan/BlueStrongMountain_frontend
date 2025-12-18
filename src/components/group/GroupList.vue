@@ -11,36 +11,29 @@ const leavingGroupId = ref(null);
 
 const searchQuery = ref("");
 
-onMounted(async () => {
-  await fetchGroups();
-});
-
 const currentUserId = computed(() => authStore.user.value?.id ?? null);
 
-function hasId(list, uid) {
-  if (!uid || !Array.isArray(list)) return false;
-  return list.some((id) => Number(id) === Number(uid));
-}
+onMounted(async () => {
+  const uid = currentUserId.value;
+  if (!uid) {
+    console.warn(
+      "[GroupList] currentUserId가 없어 그룹 목록을 불러오지 않습니다.",
+    );
+    window.alert("로그인이 필요합니다.");
+    return;
+  }
 
-function isOwnerOrManager(group) {
+  await fetchGroups({ requesterId: uid });
+});
+
+/**
+ * Real API 그룹 목록 응답에는 managerIds/memberIds가 없어 멤버십 판별이 불가함. 목록 필터링(isJoinedGroup)을 제거함.
+ * TODO: 목록 응답에 myRole(OWNER/MANAGER/MEMBER) 또는 joined(boolean) 필드가 추가되면, GroupList에서 멤버십 기반 필터링/버튼 노출(매니저 수정권한 등)을 복구할 것.
+ */
+function isOwner(group) {
   const uid = currentUserId.value;
   if (!uid || !group) return false;
-
-  const isOwner = Number(group.ownerId) === Number(uid);
-  const isManager = hasId(group.managerIds, uid);
-
-  return isOwner || isManager;
-}
-
-function isJoinedGroup(group) {
-  const uid = currentUserId.value;
-  if (!uid || !group) return false;
-
-  const isOwner = Number(group.ownerId) === Number(uid);
-  const isManager = hasId(group.managerIds, uid);
-  const isMember = hasId(group.memberIds, uid);
-
-  return isOwner || isManager || isMember;
+  return Number(group.ownerId) === Number(uid);
 }
 
 function goGroup(groupId) {
@@ -64,8 +57,14 @@ function goEditGroup(groupId) {
 async function handleLeaveGroup(groupId) {
   const target = groups.value.find((g) => g.id === groupId);
   const name = target?.name ?? "이 그룹";
+  const uid = currentUserId.value;
 
-  if (currentUserId.value && target?.ownerId === currentUserId.value) {
+  if (!uid) {
+    window.alert("로그인 정보가 없어 그룹을 탈퇴할 수 없습니다.");
+    return;
+  }
+
+  if (Number(target?.ownerId) === Number(uid)) {
     window.alert(
       "이 그룹의 소유자는 바로 탈퇴할 수 없습니다.\n" +
         "그룹 수정 > 소유자 변경에서 소유권을 다른 멤버에게 넘긴 뒤 탈퇴해 주세요.",
@@ -81,7 +80,7 @@ async function handleLeaveGroup(groupId) {
 
   try {
     leavingGroupId.value = groupId;
-    await leaveGroup(groupId); // 실제로는 백엔드 API 호출 자리
+    await leaveGroup(groupId, { requesterId: uid });
   } catch (e) {
     console.error(e);
     alert("그룹 탈퇴 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
@@ -94,7 +93,7 @@ const filteredGroups = computed(() => {
   const q = searchQuery.value.trim().toLowerCase();
   const uid = currentUserId.value;
 
-  let list = groups.value.filter((g) => isJoinedGroup(g));
+  let list = [...groups.value];
 
   if (!uid) {
     list = [];
@@ -281,7 +280,7 @@ const filteredGroups = computed(() => {
 
               <!-- 그룹 수정 -->
               <button
-                v-if="isOwnerOrManager(group)"
+                v-if="isOwner(group)"
                 type="button"
                 class="px-3 py-1.5 text-xs font-medium border rounded-lg bg-white text-gray-700 hover:bg-gray-50"
                 @click.stop="goEditGroup(group.id)"
