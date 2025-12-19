@@ -130,25 +130,14 @@ const memberIds = computed(() =>
   selectedMembers.value.filter((m) => !m.isManager).map((m) => m.id),
 );
 
-// 그룹 참여자 수 (관리자 + 멤버 중복 제거)
-const participantCount = computed(() => {
-  const set = new Set([...managerIds.value, ...memberIds.value]);
-  return set.size;
-});
-
 const canSubmit = computed(() => {
-  return (
-    title.value.trim().length > 0 &&
-    participantCount.value > 0 && // 전체 참여자 1명 이상
-    managerIds.value.length > 0 && // 최소 1명은 관리자
-    !props.submitting
-  );
+  return title.value.trim().length > 0 && !props.submitting;
 });
 
 // ----- submit / cancel -----
 async function handleSubmit() {
   if (!canSubmit.value) {
-    formError.value = "그룹 이름과 멤버/관리자를 설정했는지 확인해주세요.";
+    formError.value = "그룹 이름을 입력했는지 확인해주세요.";
     return;
   }
 
@@ -373,8 +362,8 @@ function handleCancel() {
         </div>
 
         <p class="text-[11px] text-gray-400 mt-1">
-          최소 1명 이상을 <span class="font-semibold">관리자</span>로 지정해야
-          그룹을 만들 수 있어요.
+          멤버/관리자 추가는 선택사항이에요. 그룹 생성자는 자동으로
+          <span class="font-semibold">owner</span>로 포함됩니다.
         </p>
       </div>
 

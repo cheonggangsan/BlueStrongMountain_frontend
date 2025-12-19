@@ -277,12 +277,7 @@ describe("GroupForm.vue", () => {
     expect(emits.length).toBe(1);
   });
 
-  it("유효성 검사: 제목/멤버/관리자가 설정되지 않으면 제출 버튼이 비활성화되고, 조건 충족 시 활성화 + 올바른 payload로 submit emit", async () => {
-    // 검색 결과 mock
-    searchMembers.mockResolvedValue([
-      { id: 2, name: "이알고", nickname: "algoLee" },
-    ]);
-
+  it("유효성 검사: 제목만 입력하면(선택 멤버 0명) 제출이 가능하고, 빈 managerIds/memberIds로 submit emit 한다", async () => {
     const wrapper = mount(GroupForm, {
       props: { mode: "create", submitting: false },
     });
@@ -293,40 +288,15 @@ describe("GroupForm.vue", () => {
     // 초기: disabled
     expect(submitButton.attributes("disabled")).toBeDefined();
 
-    // 1. 제목만 입력
+    // 1. 제목 입력 -> 이제 바로 활성화되어야 함
     await wrapper
       .find('input[placeholder="예) 청강산 1기 알고리즘 캠프"]')
       .setValue("유효한 제목");
     await wrapper.vm.$nextTick();
-    expect(submitButton.attributes("disabled")).toBeDefined();
 
-    // 2. 멤버 검색 & 선택 (하지만 아직 관리자로 지정하지 않음)
-    await wrapper
-      .find('input[placeholder="이름 또는 닉네임으로 검색"]')
-      .setValue("이알고");
-    const searchButton = findButtonByText(wrapper, "검색");
-    await searchButton.trigger("click");
-    await flushPromises();
-
-    const searchBox = wrapper.findAll("div.border.rounded-xl")[0];
-    const resultItem = searchBox.find("li");
-    await resultItem.trigger("click"); // 선택됨 (isManager=false)
-    await wrapper.vm.$nextTick();
-
-    // 여전히 disabled (관리자 없음)
-    expect(submitButton.attributes("disabled")).toBeDefined();
-
-    // 3. 선택된 멤버를 관리자 지정
-    const selectedBox = wrapper.findAll("div.border.rounded-xl")[1];
-    const selectedItem = selectedBox.find("li");
-    const managerBtn = findButtonByText(selectedItem, "관리자로 지정");
-    await managerBtn.trigger("click");
-    await wrapper.vm.$nextTick();
-
-    // 이제 버튼 활성화
     expect(submitButton.attributes("disabled")).toBeUndefined();
 
-    // 4. 제출 버튼 클릭 → submit 이벤트 payload 검증
+    // 2. 제출 버튼 클릭 → submit 이벤트 payload 검증
     await submitButton.trigger("click");
     const emits = wrapper.emitted("submit");
     expect(emits).toBeTruthy();
@@ -336,7 +306,7 @@ describe("GroupForm.vue", () => {
     expect(payload.description).toBe(""); // 설명은 입력 안 했으므로 trim() 결과 ""
     expect(payload.visibility).toBe("PRIVATE"); // 기본 값
     expect(payload.memberIds).toEqual([]);
-    expect(payload.managerIds).toEqual([2]);
+    expect(payload.managerIds).toEqual([]);
   });
 
   it("mode='edit' 일 때 버튼 텍스트가 '변경 사항 저장'으로 표시된다", async () => {
