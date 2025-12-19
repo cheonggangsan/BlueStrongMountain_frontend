@@ -81,4 +81,22 @@ describe("ForgotPasswordView", () => {
       query: { token: "reset-token-456" },
     });
   });
+
+  it("token이 없는 응답이면 개발용 바로가기 버튼이 렌더링되지 않는다", async () => {
+    authService.forgotPassword.mockResolvedValue({
+      success: true,
+      message: "OK",
+    });
+
+    const wrapper = mount(ForgotPasswordView);
+
+    await wrapper.find("#forgot-email").setValue("user@example.com");
+    await wrapper.find("form").trigger("submit.prevent");
+    await flushPromises();
+
+    expect(wrapper.text()).toContain(
+      "입력하신 이메일로 비밀번호 재설정 안내를 보냈습니다. (이메일이 등록되어 있다면)",
+    );
+    expect(wrapper.text()).not.toContain("새 비밀번호 설정하러 가기");
+  });
 });

@@ -53,13 +53,21 @@ export async function loginWithIdPw({ email, password }) {
 }
 
 /**
- * 회원가입 (ID/PW 기반)
+ * 회원가입
+ * POST /api/v1/auth/register
+ * RegisterRequest: { email, username, password, baekjoon }
  */
-export async function signupWithIdPw({ email, nickname, password }) {
-  const response = await httpClient.post("/auth/signup", {
+export async function signupWithIdPw({
+  email,
+  nickname,
+  password,
+  baekjoonId,
+}) {
+  const response = await httpClient.post("/auth/register", {
     email,
-    nickname,
+    username: nickname,
     password,
+    baekjoon: baekjoonId ?? null,
   });
 
   return response.data;
@@ -67,32 +75,30 @@ export async function signupWithIdPw({ email, nickname, password }) {
 
 /**
  * 닉네임(username) 중복 확인
- * GET /api/v1/auth/duplicate/username?username=홍길동
- * -> baseURL이 /api 이므로 여기서는 /v1/... 로 호출
+ * GET /api/v1/auth/duplicate/username?username=...
  */
 export async function checkUsernameDuplicate({ username }) {
-  const response = await httpClient.get("/v1/auth/duplicate/username", {
+  const response = await httpClient.get("/auth/duplicate/username", {
     params: { username },
   });
 
-  // 백엔드 응답 예시(가정):
-  // { duplicated: true } 또는 { available: false } 등
-  return response.data;
+  return response.data; // { duplicated: boolean }
 }
 
 /**
- * 백엔드에서 Baekjoon 프로필 존재 여부 확인
- * GET /api/v1/baekjoon/verify?handle=xxx
+ * solved.ac 백준 핸들 존재 여부 확인
+ * GET /api/v1/auth/existHandle?handle=...
+ * 응답: boolean
  */
 export async function verifyBaekjoonId({ handle }) {
-  const response = await httpClient.get("/v1/baekjoon/verify", {
+  const response = await httpClient.get("/auth/existHandle", {
     params: { handle },
   });
 
-  // 예시 응답: { exists: true }
-  return response.data;
+  return response.data; // boolean
 }
 
+// TODO: after mypage api integration
 /**
  * 내 계정에 연결된 Baekjoon 아이디 저장/수정
  * PATCH /api/v1/members/me/baekjoon-id
@@ -118,14 +124,19 @@ export async function logout() {
     clearAccessToken();
   }
 }
+
 /**
- * 비밀번호 재설정 메일 발송
+ * 비밀번호 재설정 메일/임시 비밀번호 발급
+ * POST /api/v1/auth/password/reset
+ * body: { email }
+ * res: BaseResponse { success, message }
  */
 export async function forgotPassword({ email }) {
-  const response = await httpClient.post("/auth/forgot-password", { email });
+  const response = await httpClient.post("/auth/password/reset", { email });
   return response.data;
 }
 
+// TODO: after email verification api changes
 /**
  * 비밀번호 재설정
  */
@@ -136,34 +147,3 @@ export async function resetPassword({ token, newPassword }) {
   });
   return response.data;
 }
-
-/**
- * 2) 나중에 JWT로 전환할 때 쓸 예시 (현재는 주석으로만 보관)
- *
- * JWT 적용 시, httpClient에 accessToken을 실어 보내고,
- * refreshToken은 httpOnly 쿠키나 별도 저장 전략을 사용.
- *
- * // import httpClient, { setAccessToken, clearAccessToken } from "./httpClient";
- *
- * export async function loginWithJwt({ id, password }) {
- *   const response = await httpClient.post("/auth/login", { id, password });
- *   const { accessToken, refreshToken, user } = response.data;
- *
- *   setAccessToken(accessToken);
- *   // refreshToken은 브라우저 저장소(localStorage)보다는 httpOnly 쿠키 권장
- *
- *   return { accessToken, refreshToken, user };
- * }
- *
- * export async function refreshAccessToken() {
- *   const response = await httpClient.post("/auth/refresh");
- *   const { accessToken } = response.data;
- *   setAccessToken(accessToken);
- *   return accessToken;
- * }
- *
- * export async function logoutJwt() {
- *   await httpClient.post("/auth/logout");
- *   clearAccessToken();
- * }
- */
