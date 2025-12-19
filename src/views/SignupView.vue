@@ -102,7 +102,7 @@ async function handleCheckBaekjoonId() {
 
   try {
     const res = await authService.checkBaekjoonId({ handle });
-    // 가정: { exists: boolean }
+
     if (res.exists) {
       isBaekjoonValid.value = true;
       baekjoonCheckMessage.value = "존재하는 백준 아이디입니다.";
@@ -146,6 +146,11 @@ function validate() {
 
   if (password.value !== passwordConfirm.value) {
     errorMessage.value = "비밀번호와 비밀번호 확인이 일치하지 않습니다.";
+    return false;
+  }
+
+  if (isNicknameDuplicated.value === null) {
+    errorMessage.value = "닉네임 중복 확인을 해주세요.";
     return false;
   }
 

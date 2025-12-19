@@ -81,31 +81,21 @@ export const authService = {
    * 회원가입
    */
   async signup({ email, nickname, password, baekjoonId }) {
-    if (USE_MOCK_AUTH) {
+    if (USE_MOCK_AUTH)
       return mockSignup({ email, nickname, password, baekjoonId });
-    }
 
-    const data = await signupWithIdPw({
-      email,
-      nickname,
-      password,
-      baekjoonId,
-    });
-
-    return data;
+    return signupWithIdPw({ email, nickname, password, baekjoonId });
   },
 
   /**
    * 비밀번호 재설정 메일 발송
    */
   async forgotPassword({ email }) {
-    if (USE_MOCK_AUTH) {
-      return mockForgotPassword({ email });
-    }
-
-    return forgotPasswordApi({ email });
+    if (USE_MOCK_AUTH) return mockForgotPassword({ email });
+    return forgotPasswordApi({ email }); // BaseResponse
   },
 
+  // TODO: after email verification api changes
   /**
    * 비밀번호 재설정
    */
@@ -117,6 +107,7 @@ export const authService = {
     return resetPasswordApi({ token, newPassword });
   },
 
+  // TODO: after mypage api integration
   /**
    * 비밀번호 재확인 (본인 인증)
    * - mock: 비밀번호 검증 + 최신 user 반환
@@ -132,6 +123,7 @@ export const authService = {
     );
   },
 
+  // TODO: after mypage api integration
   /**
    * 비밀번호 변경
    */
@@ -149,24 +141,21 @@ export const authService = {
    * 닉네임(=username) 중복 확인
    */
   async checkUsernameDuplicate({ username }) {
-    if (USE_MOCK_AUTH) {
-      return mockCheckUsernameDuplicate({ username });
-    }
-
-    return checkUsernameDuplicateApi({ username });
+    if (USE_MOCK_AUTH) return mockCheckUsernameDuplicate({ username });
+    return checkUsernameDuplicateApi({ username }); // { duplicated }
   },
 
   /**
    * 백준 아이디 존재 여부 확인
    */
   async checkBaekjoonId({ handle }) {
-    if (USE_MOCK_AUTH) {
-      return mockCheckBaekjoonId({ handle });
-    }
+    if (USE_MOCK_AUTH) return mockCheckBaekjoonId({ handle });
 
-    return verifyBaekjoonIdApi({ handle });
+    const res = await verifyBaekjoonIdApi({ handle }); // boolean
+    return { exists: !!res };
   },
 
+  // TODO: after mypage api integration
   /**
    * 닉네임 변경
    */
@@ -181,6 +170,7 @@ export const authService = {
     );
   },
 
+  // TODO: after mypage api integration
   /**
    * 백준 아이디 변경
    */
@@ -192,6 +182,7 @@ export const authService = {
     return updateBaekjoonIdApi({ baekjoonId });
   },
 
+  // TODO: after mypage api integration
   /**
    * 회원 탈퇴
    */
