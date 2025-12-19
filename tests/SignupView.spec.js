@@ -147,6 +147,9 @@ describe("SignupView", () => {
       exists: true,
     });
 
+    const nickSpy = authService.checkUsernameDuplicate;
+    nickSpy.mockResolvedValue({ duplicated: false, available: true });
+
     const wrapper = mount(SignupView);
     await goToFormStep(wrapper);
 
@@ -160,6 +163,13 @@ describe("SignupView", () => {
       .find((btn) => btn.text().includes("아이디 확인"));
     expect(bjCheckBtn).toBeTruthy();
     await bjCheckBtn.trigger("click");
+    await flushPromises();
+
+    // 닉네임 중복 확인
+    const nicknameCheckBtn = wrapper
+      .findAll("button")
+      .find((btn) => btn.text().includes("중복 확인"));
+    await nicknameCheckBtn.trigger("click");
     await flushPromises();
 
     await wrapper.find("#signup-password").setValue("password123");
@@ -296,5 +306,87 @@ describe("SignupView", () => {
     expect(wrapper.text()).toContain(
       "이미 사용 중인 닉네임입니다. 다른 닉네임을 입력해주세요.",
     );
+  });
+
+  it("닉네임 변경 시 중복 상태/메시지가 초기화된다", async () => {
+    authService.checkUsernameDuplicate.mockResolvedValue({ duplicated: true });
+
+    const wrapper = mount(SignupView);
+    await goToFormStep(wrapper);
+
+    await wrapper.find("#nickname").setValue("dupUser");
+
+    const nicknameCheckButton = wrapper
+      .findAll("button")
+      .find((btn) => btn.text().includes("중복 확인"));
+    await nicknameCheckButton.trigger("click");
+    await flushPromises();
+
+    expect(wrapper.text()).toContain(
+      "이미 사용 중인 닉네임입니다. 다른 닉네임을 입력해주세요.",
+    );
+
+    // 닉네임 바꾸면 메시지 사라져야 함
+    await wrapper.find("#nickname").setValue("newUser");
+    await flushPromises();
+
+    expect(wrapper.text()).not.toContain(
+      "이미 사용 중인 닉네임입니다. 다른 닉네임을 입력해주세요.",
+    );
+  });
+
+  it("백준 아이디 변경 시 검증 상태/메시지가 초기화된다", async () => {
+    authService.checkBaekjoonId.mockResolvedValue({ exists: false });
+
+    const wrapper = mount(SignupView);
+    await goToFormStep(wrapper);
+
+    await wrapper.find("#baekjoon-id").setValue("no_such_user");
+
+    const bjCheckBtn = wrapper
+      .findAll("button")
+      .find((btn) => btn.text().includes("아이디 확인"));
+    await bjCheckBtn.trigger("click");
+    await flushPromises();
+
+    expect(wrapper.text()).toContain(
+      "존재하지 않는 백준 아이디입니다. 다시 확인해주세요.",
+    );
+
+    // 변경하면 메시지 사라져야 함
+    await wrapper.find("#baekjoon-id").setValue("tourist");
+    await flushPromises();
+
+    expect(wrapper.text()).not.toContain(
+      "존재하지 않는 백준 아이디입니다. 다시 확인해주세요.",
+    );
+  });
+
+  it("닉네임 중복 확인을 하지 않으면 제출 시 에러를 보여준다", async () => {
+    authService.checkBaekjoonId.mockResolvedValue({ exists: true });
+
+    const wrapper = mount(SignupView);
+    await goToFormStep(wrapper);
+
+    await wrapper.find("#signup-email").setValue("user@example.com");
+    await wrapper.find("#baekjoon-id").setValue("tourist");
+    await wrapper.find("#nickname").setValue("user");
+
+    // 백준 확인만 하고
+    const bjCheckBtn = wrapper
+      .findAll("button")
+      .find((btn) => btn.text().includes("아이디 확인"));
+    await bjCheckBtn.trigger("click");
+    await flushPromises();
+
+    await wrapper.find("#signup-password").setValue("password123");
+    await wrapper.find("#signup-password-confirm").setValue("password123");
+
+    await wrapper.find("form").trigger("submit.prevent");
+    await flushPromises();
+
+    // 구현 정책에 맞는 메시지로 assert
+    expect(wrapper.text()).toContain("닉네임 중복 확인을 해주세요.");
+    expect(authService.signup).not.toHaveBeenCalled();
   });
 });
