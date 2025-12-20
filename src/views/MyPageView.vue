@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, onMounted } from "vue";
+import { ref, watch, onMounted, computed } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/data/authStore";
 import { authService } from "@/services/authService";
@@ -22,14 +22,14 @@ const email = ref("");
 const nickname = ref("");
 const originalNickname = ref("");
 const baekjoonId = ref("");
-const originalBaekjoonId = ref("");
+// const originalBaekjoonId = ref("");
 
 // 백준 아이디 수정 상태
-const isEditingBaekjoonId = ref(false);
-const isSavingBaekjoonId = ref(false);
-const isCheckingBaekjoonId = ref(false);
-const baekjoonCheckMessage = ref("");
-const isBaekjoonValid = ref(null); // null: 모름, true: 존재, false: 없음
+// const isEditingBaekjoonId = ref(false);
+// const isSavingBaekjoonId = ref(false);
+// const isCheckingBaekjoonId = ref(false);
+// const baekjoonCheckMessage = ref("");
+// const isBaekjoonValid = ref(null); // null: 모름, true: 존재, false: 없음
 
 // 닉네임 수정 상태
 const isEditingNickname = ref(false);
@@ -46,11 +46,11 @@ watch(nickname, () => {
 });
 
 // 백준 아이디가 바뀌면 검증 결과는 무효화
-watch(baekjoonId, () => {
-  if (!isEditingBaekjoonId.value) return;
-  isBaekjoonValid.value = null;
-  baekjoonCheckMessage.value = "";
-});
+// watch(baekjoonId, () => {
+//   if (!isEditingBaekjoonId.value) return;
+//   isBaekjoonValid.value = null;
+//   baekjoonCheckMessage.value = "";
+// });
 
 // ===== 3영역: 비밀번호 변경 =====
 const showPasswordSection = ref(false);
@@ -65,6 +65,8 @@ const showDeleteConfirm = ref(false);
 const deleteConfirmInput = ref("");
 const isDeleting = ref(false);
 const deleteError = ref("");
+
+const currentUserId = computed(() => authStore.user.value?.id ?? null);
 
 // ===== 기본 유저 정보 로드 (로그인 안 돼 있으면 Login으로) =====
 onMounted(async () => {
@@ -96,28 +98,43 @@ async function handleVerifyPassword() {
     return;
   }
 
+  const userId = currentUserId.value;
+  if (!userId) {
+    router.push({ name: "Login", query: { redirect: "/me" } });
+    return;
+  }
+
   verifyLoading.value = true;
   try {
-    const res = await authService.verifyPassword({ password: pwd });
+    const ok = await authService.verifyPassword({ userId, password: pwd }); // boolean
+    if (ok !== true) {
+      verifyError.value = "비밀번호가 올바르지 않습니다.";
+      return;
+    }
 
-    const user = res.user;
+    const user = await authService.getUserInfo({ id: userId });
+    if (!user) {
+      router.push({ name: "Login", query: { redirect: "/me" } });
+      return;
+    }
+
     email.value = user.email;
     nickname.value = user.nickname;
     originalNickname.value = user.nickname;
-    baekjoonId.value = user.baekjoonId || "";
-    originalBaekjoonId.value = user.baekjoonId || "";
+    baekjoonId.value =
+      user.baekjoonId ?? authStore.user.value?.baekjoonId ?? "";
 
     step.value = "profile";
     verifyPasswordInput.value = "";
     globalMessage.value = "본인 확인이 완료되었습니다.";
   } catch (e) {
-    if (e.code === "INVALID_PASSWORD") {
+    // 401이거나 커스텀 코드가 오거나 모두 커버
+    if (e?.code === "INVALID_PASSWORD" || e?.response?.status === 401) {
       verifyError.value = "비밀번호가 올바르지 않습니다.";
     } else {
       verifyError.value =
         "본인 확인 중 문제가 발생했습니다. 다시 시도해주세요.";
     }
-    console.log(e);
   } finally {
     verifyLoading.value = false;
   }
@@ -131,7 +148,6 @@ async function handleCheckNickname() {
   const value = nickname.value.trim();
   if (!value) {
     nicknameCheckMessage.value = "닉네임을 먼저 입력해주세요.";
-    isNicknameDuplicated.value = null;
     return;
   }
 
@@ -163,7 +179,7 @@ async function handleCheckNickname() {
     isNicknameDuplicated.value = null;
     nicknameCheckMessage.value =
       "닉네임 중복 확인 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
-    console.log(e);
+    console.error(e);
   } finally {
     isCheckingNickname.value = false;
   }
@@ -186,6 +202,12 @@ function cancelEditNickname() {
 async function handleSaveNickname() {
   globalError.value = "";
   globalMessage.value = "";
+
+  const userId = currentUserId.value;
+  if (!userId) {
+    router.push({ name: "Login", query: { redirect: "/me" } });
+    return;
+  }
 
   const value = nickname.value.trim();
   if (!value) {
@@ -217,7 +239,10 @@ async function handleSaveNickname() {
   isSavingNickname.value = true;
 
   try {
-    const res = await authService.updateNickname({ nickname: value });
+    const res = await authService.updateNickname({
+      id: userId,
+      nickname: value,
+    });
     const user = res.user;
 
     nickname.value = user.nickname;
@@ -229,118 +254,13 @@ async function handleSaveNickname() {
     globalMessage.value = "닉네임이 변경되었습니다.";
 
     // 헤더/전역 상태 동기화
-    await authStore.fetchCurrentUser({ force: true });
+    authStore.updateUser({ nickname: user.nickname });
   } catch (e) {
     globalError.value =
       "닉네임을 변경하는 중 문제가 발생했습니다. 잠시 후 다시 시도해주세요.";
-    console.log(e);
+    console.error(e);
   } finally {
     isSavingNickname.value = false;
-  }
-}
-
-// ===== 백준 아이디 확인 =====
-async function handleCheckBaekjoonId() {
-  baekjoonCheckMessage.value = "";
-  isBaekjoonValid.value = null;
-
-  const handle = baekjoonId.value.trim();
-  if (!handle) {
-    baekjoonCheckMessage.value = "백준 아이디를 먼저 입력해주세요.";
-    return;
-  }
-
-  // 지금 등록된 아이디와 동일하면 그냥 유효로 처리
-  if (handle === (originalBaekjoonId.value || "")) {
-    isBaekjoonValid.value = true;
-    baekjoonCheckMessage.value = "현재 등록된 백준 아이디입니다.";
-    return;
-  }
-
-  isCheckingBaekjoonId.value = true;
-
-  try {
-    const res = await authService.checkBaekjoonId({ handle });
-    if (res.exists) {
-      isBaekjoonValid.value = true;
-      baekjoonCheckMessage.value = "존재하는 백준 아이디입니다.";
-    } else {
-      isBaekjoonValid.value = false;
-      baekjoonCheckMessage.value =
-        "존재하지 않는 백준 아이디입니다. 다시 확인해주세요.";
-    }
-  } catch (e) {
-    console.error(e);
-    isBaekjoonValid.value = null;
-    baekjoonCheckMessage.value =
-      "백준 아이디 확인 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
-  } finally {
-    isCheckingBaekjoonId.value = false;
-  }
-}
-
-function startEditBaekjoonId() {
-  isEditingBaekjoonId.value = true;
-  baekjoonCheckMessage.value = "";
-  isBaekjoonValid.value = null;
-}
-
-function cancelEditBaekjoonId() {
-  isEditingBaekjoonId.value = false;
-  baekjoonId.value = originalBaekjoonId.value || "";
-  baekjoonCheckMessage.value = "";
-  isBaekjoonValid.value = null;
-}
-
-// ===== 백준 아이디 저장 =====
-async function handleSaveBaekjoonId() {
-  globalError.value = "";
-  globalMessage.value = "";
-
-  const value = baekjoonId.value.trim();
-
-  if (!value) {
-    globalError.value = "백준 아이디를 비울 수 없습니다.";
-    return;
-  }
-
-  // 변경 없으면 그냥 종료
-  if (value === (originalBaekjoonId.value || "")) {
-    isEditingBaekjoonId.value = false;
-    baekjoonCheckMessage.value = "";
-    isBaekjoonValid.value = null;
-    return;
-  }
-
-  // 존재하지 않는 아이디면 막기
-  if (isBaekjoonValid.value !== true) {
-    globalError.value =
-      "백준 아이디가 실제로 존재하는지 확인 버튼을 눌러주세요.";
-    return;
-  }
-
-  isSavingBaekjoonId.value = true;
-
-  try {
-    const res = await authService.updateBaekjoonId({ baekjoonId: value });
-    const user = res.user;
-
-    baekjoonId.value = user.baekjoonId || "";
-    originalBaekjoonId.value = user.baekjoonId || "";
-
-    isEditingBaekjoonId.value = false;
-    baekjoonCheckMessage.value = "";
-    isBaekjoonValid.value = null;
-    globalMessage.value = "백준 아이디가 변경되었습니다.";
-
-    // 헤더/전역 상태 동기화
-    await authStore.fetchCurrentUser({ force: true });
-  } catch (e) {
-    globalError.value =
-      "백준 아이디를 변경하는 중 문제가 발생했습니다. 잠시 후 다시 시도해주세요.";
-    console.log(e);
-  } finally {
-    isSavingBaekjoonId.value = false;
   }
 }
 
@@ -350,6 +270,12 @@ async function handleChangePassword() {
   passwordChangeMessage.value = "";
   globalError.value = "";
   globalMessage.value = "";
+
+  const userId = currentUserId.value;
+  if (!userId) {
+    router.push({ name: "Login", query: { redirect: "/me" } });
+    return;
+  }
 
   const pwd = newPassword.value.trim();
   const confirm = newPasswordConfirm.value.trim();
@@ -368,7 +294,7 @@ async function handleChangePassword() {
   isChangingPassword.value = true;
 
   try {
-    await authService.changePassword({ newPassword: pwd });
+    await authService.changePassword({ id: userId, newPassword: pwd });
 
     // 보안상 비밀번호 변경 후 세션 끊고 재로그인 요구
     await authStore.logout();
@@ -381,7 +307,7 @@ async function handleChangePassword() {
   } catch (e) {
     passwordChangeError.value =
       "비밀번호 변경 중 문제가 발생했습니다. 잠시 후 다시 시도해주세요.";
-    console.log(e);
+    console.error(e);
   } finally {
     isChangingPassword.value = false;
     newPassword.value = "";
@@ -395,6 +321,12 @@ async function handleDeleteAccount() {
   globalError.value = "";
   globalMessage.value = "";
 
+  const userId = currentUserId.value;
+  if (!userId) {
+    router.push({ name: "Login", query: { redirect: "/me" } });
+    return;
+  }
+
   if (deleteConfirmInput.value.trim() !== "탈퇴합니다") {
     deleteError.value =
       '확인 문구가 일치하지 않습니다. "탈퇴합니다"를 정확히 입력해주세요.';
@@ -402,32 +334,15 @@ async function handleDeleteAccount() {
   }
 
   isDeleting.value = true;
-
   try {
-    /**
-     * TODO: 실제 백엔드 전환 시에는 대략 이런 흐름으로:
-     *
-     * const summary = await getMyGroupSummary();
-     * if (summary.joinedCount && summary.joinedCount > 0) {
-     *   deleteError.value =
-     *     `현재 ${summary.joinedCount}개의 그룹에 속해 있습니다. ` +
-     *     "모든 그룹에서 탈퇴한 뒤 다시 시도해주세요.";
-     *   return;
-     * }
-     *
-     * await deleteMyAccount();
-     */
-    await authService.deleteAccount();
+    await authService.deleteAccount({ id: userId });
 
-    // 세션/스토어 정리
     await authStore.logout();
-
-    // 탈퇴 후에는 홈(또는 랜딩)으로 이동
     router.push({ name: "Home" });
   } catch (e) {
     deleteError.value =
       "회원 탈퇴 중 문제가 발생했습니다. 잠시 후 다시 시도해주세요.";
-    console.log(e);
+    console.error(e);
   } finally {
     isDeleting.value = false;
   }
@@ -513,6 +428,7 @@ async function handleDeleteAccount() {
 
             <button
               type="button"
+              data-testid="verify-submit"
               :disabled="verifyLoading"
               class="mt-1 inline-flex items-center justify-center rounded-lg bg-yellow-400 px-4 py-2 text-sm font-semibold text-gray-900 shadow-sm hover:bg-yellow-300 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
               @click="handleVerifyPassword"
@@ -537,9 +453,9 @@ async function handleDeleteAccount() {
 
             <div class="mt-4 space-y-4">
               <div>
-                <label class="block text-xs font-medium text-gray-500 mb-1">
-                  이메일
-                </label>
+                <label class="block text-xs font-medium text-gray-500 mb-1"
+                  >이메일</label
+                >
                 <div
                   class="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700"
                 >
@@ -549,74 +465,19 @@ async function handleDeleteAccount() {
               </div>
 
               <div>
-                <label
-                  for="mypage-baekjoon-id"
-                  class="block text-xs font-medium text-gray-500 mb-1"
+                <label class="block text-xs font-medium text-gray-500 mb-1"
+                  >백준 아이디</label
                 >
-                  백준 아이디
-                </label>
-
-                <div class="flex gap-2 items-center">
-                  <input
-                    id="mypage-baekjoon-id"
-                    v-model="baekjoonId"
-                    :disabled="!isEditingBaekjoonId"
-                    type="text"
-                    class="flex-1 rounded-lg border border-gray-200 bg-white/70 px-3 py-2 text-sm shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 disabled:bg-gray-50 disabled:text-gray-500"
-                    placeholder="백준 온라인 저지 아이디"
-                  />
-                  <button
-                    v-if="!isEditingBaekjoonId"
-                    type="button"
-                    class="shrink-0 rounded-lg border border-gray-300 bg-white/80 px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-100"
-                    @click="startEditBaekjoonId"
-                  >
-                    아이디 수정
-                  </button>
-                </div>
-
-                <!-- 백준 아이디 수정 모드 -->
                 <div
-                  v-if="isEditingBaekjoonId"
-                  class="mt-2 flex flex-wrap items-center gap-2"
+                  data-testid="baekjoon-display"
+                  class="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700"
                 >
-                  <button
-                    type="button"
-                    class="rounded-lg border border-gray-300 bg-white/80 px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-100 disabled:opacity-60 disabled:cursor-not-allowed"
-                    :disabled="isCheckingBaekjoonId || !baekjoonId.trim()"
-                    @click="handleCheckBaekjoonId"
-                  >
-                    <span v-if="!isCheckingBaekjoonId">아이디 확인</span>
-                    <span v-else>확인 중...</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    class="rounded-lg bg-yellow-400 px-3 py-1.5 text-xs font-semibold text-gray-900 shadow-sm hover:bg-yellow-300 disabled:opacity-60 disabled:cursor-not-allowed"
-                    :disabled="isSavingBaekjoonId"
-                    @click="handleSaveBaekjoonId"
-                  >
-                    <span v-if="!isSavingBaekjoonId">저장</span>
-                    <span v-else>저장 중...</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    class="rounded-lg border border-transparent px-2 py-1 text-xs text-gray-500 hover:text-gray-700"
-                    @click="cancelEditBaekjoonId"
-                  >
-                    취소
-                  </button>
+                  <span>{{ baekjoonId || "-" }}</span>
+                  <span class="text-[11px] text-gray-400"> 수정 불가 </span>
                 </div>
-
-                <p
-                  v-if="baekjoonCheckMessage"
-                  class="mt-1 text-xs"
-                  :class="
-                    isBaekjoonValid === true ? 'text-green-600' : 'text-red-600'
-                  "
-                >
-                  {{ baekjoonCheckMessage }}
+                <p class="mt-1 text-xs text-gray-400">
+                  백준 아이디는 계정 생성 시 등록되며, 마이페이지에서 변경할 수
+                  없습니다.
                 </p>
               </div>
 
@@ -640,6 +501,7 @@ async function handleDeleteAccount() {
                   <button
                     v-if="!isEditingNickname"
                     type="button"
+                    data-testid="nickname-edit"
                     class="shrink-0 rounded-lg border border-gray-300 bg-white/80 px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-100"
                     @click="startEditNickname"
                   >
@@ -647,13 +509,13 @@ async function handleDeleteAccount() {
                   </button>
                 </div>
 
-                <!-- 닉네임 수정 모드일 때만 보이는 영역 -->
                 <div
                   v-if="isEditingNickname"
                   class="mt-2 flex flex-wrap items-center gap-2"
                 >
                   <button
                     type="button"
+                    data-testid="nickname-check"
                     class="rounded-lg border border-gray-300 bg-white/80 px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-100 disabled:opacity-60 disabled:cursor-not-allowed"
                     :disabled="isCheckingNickname || !nickname.trim()"
                     @click="handleCheckNickname"
@@ -664,6 +526,7 @@ async function handleDeleteAccount() {
 
                   <button
                     type="button"
+                    data-testid="nickname-save"
                     class="rounded-lg bg-yellow-400 px-3 py-1.5 text-xs font-semibold text-gray-900 shadow-sm hover:bg-yellow-300 disabled:opacity-60 disabled:cursor-not-allowed"
                     :disabled="isSavingNickname"
                     @click="handleSaveNickname"
@@ -674,6 +537,7 @@ async function handleDeleteAccount() {
 
                   <button
                     type="button"
+                    data-testid="nickname-cancel"
                     class="rounded-lg border border-transparent px-2 py-1 text-xs text-gray-500 hover:text-gray-700"
                     @click="cancelEditNickname"
                   >
@@ -710,6 +574,7 @@ async function handleDeleteAccount() {
               </div>
               <button
                 type="button"
+                data-testid="password-toggle"
                 class="text-xs text-gray-500 hover:text-gray-700 underline-offset-2 hover:underline"
                 @click="showPasswordSection = !showPasswordSection"
               >
@@ -770,6 +635,7 @@ async function handleDeleteAccount() {
 
               <button
                 type="button"
+                data-testid="password-submit"
                 :disabled="isChangingPassword"
                 class="inline-flex items-center justify-center rounded-lg bg-yellow-400 px-4 py-2 text-sm font-semibold text-gray-900 shadow-sm hover:bg-yellow-300 disabled:opacity-60 disabled:cursor-not-allowed"
                 @click="handleChangePassword"
@@ -792,6 +658,7 @@ async function handleDeleteAccount() {
               </div>
               <button
                 type="button"
+                data-testid="delete-toggle"
                 class="text-xs font-medium text-red-700 hover:text-red-800 underline-offset-2 hover:underline"
                 @click="
                   showDeleteConfirm = !showDeleteConfirm;
@@ -815,6 +682,7 @@ async function handleDeleteAccount() {
 
               <input
                 v-model="deleteConfirmInput"
+                data-testid="delete-input"
                 type="text"
                 class="block w-full rounded-lg border border-red-200 bg-white/80 px-3 py-2 text-sm shadow-sm placeholder:text-red-300 focus:outline-none focus:ring-2 focus:ring-red-300 focus:border-red-300"
                 placeholder="탈퇴합니다 를 입력해주세요"
@@ -829,6 +697,7 @@ async function handleDeleteAccount() {
 
               <button
                 type="button"
+                data-testid="delete-confirm"
                 :disabled="
                   isDeleting || deleteConfirmInput.trim() !== '탈퇴합니다'
                 "
