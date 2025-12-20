@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed } from "vue";
+import { ref, onMounted, onUnmounted, computed, nextTick } from "vue";
 import { useRouter } from "vue-router";
 import { groups, fetchGroups, leaveGroup } from "../../data/groupStore";
 import { useAuthStore } from "../../data/authStore";
@@ -8,6 +8,66 @@ const router = useRouter();
 const authStore = useAuthStore();
 
 const leavingGroupId = ref(null);
+
+const actionMenuGroupId = ref(null);
+const menuPlacement = ref("bottom"); // "bottom" | "top"
+const menuRef = ref(null);
+
+function getMenuEl() {
+  const v = menuRef.value;
+  return Array.isArray(v) ? v[0] : v; // v-for ref 대응
+}
+
+async function toggleActionMenu(groupId, e) {
+  if (actionMenuGroupId.value === groupId) {
+    closeActionMenu();
+    return;
+  }
+
+  actionMenuGroupId.value = groupId;
+
+  await nextTick();
+  computeMenuPlacement(e);
+}
+
+function computeMenuPlacement(e) {
+  const menuEl = getMenuEl();
+  const anchorEl = e?.currentTarget;
+  if (!menuEl || !anchorEl) return;
+
+  const a = anchorEl.getBoundingClientRect();
+  const m = menuEl.getBoundingClientRect();
+  const padding = 12;
+
+  const spaceBelow = window.innerHeight - a.bottom;
+  const spaceAbove = a.top;
+
+  // 아래가 부족하면 위로 열기
+  menuPlacement.value =
+    spaceBelow < m.height + padding && spaceAbove > spaceBelow
+      ? "top"
+      : "bottom";
+}
+
+function closeActionMenu() {
+  actionMenuGroupId.value = null;
+}
+
+function handleResize() {
+  if (actionMenuGroupId.value) closeActionMenu();
+}
+
+onMounted(() => {
+  document.addEventListener("click", closeActionMenu);
+  window.addEventListener("resize", handleResize);
+  window.addEventListener("scroll", closeActionMenu, true); // 스크롤 시 닫기(겹침 방지)
+});
+
+onUnmounted(() => {
+  document.removeEventListener("click", closeActionMenu);
+  window.removeEventListener("resize", handleResize);
+  window.removeEventListener("scroll", closeActionMenu, true);
+});
 
 const searchQuery = ref("");
 
@@ -222,115 +282,174 @@ const filteredGroups = computed(() => {
         <li
           v-for="group in filteredGroups"
           :key="group.id"
-          class="group relative flex cursor-pointer flex-col justify-between overflow-hidden rounded-2xl border border-gray-200 bg-white/90 p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-yellow-300 hover:shadow-md"
+          :class="[
+            'group relative overflow-visible transition-all hover:-translate-y-0.5',
+            actionMenuGroupId === group.id ? 'z-50' : 'z-0',
+          ]"
           role="button"
           tabindex="0"
           @click="goGroup(group.id)"
           @keydown.enter="goGroup(group.id)"
           @keydown.space.prevent="goGroup(group.id)"
         >
-          <!-- 상단 색띠 -->
+          <!-- ✅ 카드 본문: 여기만 클리핑 -->
           <div
-            class="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-yellow-300 via-amber-300 to-orange-300 opacity-0 group-hover:opacity-100 transition-opacity"
-          />
-
-          <div class="flex items-start gap-3">
-            <!-- 이니셜 뱃지 -->
+            class="relative overflow-hidden rounded-2xl border border-gray-200 bg-white/90 p-4 shadow-sm transition-all group-hover:border-yellow-300 group-hover:shadow-md focus:outline-none focus:ring-2 focus:ring-yellow-200 focus:ring-offset-2"
+          >
+            <!-- 상단 색띠 -->
             <div
-              class="hidden sm:flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-yellow-100 text-sm font-semibold text-yellow-700"
-            >
-              {{ group.name?.charAt(0) || "G" }}
-            </div>
+              class="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-yellow-300 via-amber-300 to-orange-300 opacity-0 group-hover:opacity-100 transition-opacity"
+            />
 
-            <div class="min-w-0 flex-1">
-              <div class="flex items-center gap-2">
-                <h2
-                  class="truncate text-sm sm:text-base font-semibold text-gray-900"
-                >
-                  {{ group.name }}
-                </h2>
-
-                <svg
-                  class="h-4 w-4 flex-shrink-0 text-gray-300 group-hover:text-yellow-500 transition-colors"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  aria-hidden="true"
-                >
-                  <path
-                    stroke="currentColor"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M9 18l6-6-6-6"
-                  />
-                </svg>
+            <div class="flex items-start gap-3 pr-12">
+              <!-- 이니셜 뱃지 -->
+              <div
+                class="hidden sm:flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-yellow-100 text-sm font-semibold text-yellow-700"
+              >
+                {{ group.name?.charAt(0) || "G" }}
               </div>
 
-              <p class="mt-1 line-clamp-2 text-[11px] sm:text-xs text-gray-500">
-                {{ group.description }}
-              </p>
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                  <h2
+                    class="flex-1 truncate text-sm sm:text-base font-semibold text-gray-900"
+                  >
+                    {{ group.name }}
+                  </h2>
 
-              <p
-                v-if="group.updatedAt"
-                class="mt-1 text-[10px] text-gray-400"
-              >
-                최근 업데이트:
-                {{ group.updatedAt }}
-                <!-- ⚠️ 나중에 dayjs 같은 걸로 예쁘게 포맷팅 가능 -->
-              </p>
+                  <!-- (선택) 카드 클릭 유도 chevron -->
+                  <svg
+                    class="h-4 w-4 flex-shrink-0 text-gray-300 group-hover:text-yellow-500 transition-colors"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                  >
+                    <path
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M9 18l6-6-6-6"
+                    />
+                  </svg>
+                </div>
+
+                <p
+                  class="mt-1 line-clamp-2 text-[11px] sm:text-xs text-gray-500"
+                >
+                  {{ group.description }}
+                </p>
+
+                <p
+                  v-if="group.updatedAt"
+                  class="mt-1 text-[10px] text-gray-400"
+                >
+                  최근 업데이트: {{ group.updatedAt }}
+                </p>
+              </div>
+            </div>
+
+            <div class="mt-3 flex items-center justify-between text-[11px]">
+              <div class="flex items-center gap-2 text-gray-400">
+                <span
+                  class="inline-flex items-center gap-1 rounded-full bg-gray-50 px-2 py-0.5 text-[10px] font-medium text-gray-500 border border-gray-100"
+                >
+                  👥 멤버 {{ group.memberCount }}명
+                </span>
+
+                <span
+                  v-if="isOwner(group)"
+                  class="inline-flex items-center gap-1 rounded-full bg-yellow-100 px-2 py-0.5 text-[10px] font-medium text-yellow-800 border border-yellow-200"
+                >
+                  ⭐ 내 소유 그룹
+                </span>
+
+                <span
+                  v-else-if="isManager(group)"
+                  class="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-700 border border-blue-100"
+                >
+                  🛠 매니저
+                </span>
+              </div>
             </div>
           </div>
 
-          <div class="mt-3 flex items-center justify-between text-[11px]">
-            <div class="flex items-center gap-2 text-gray-400">
-              <span
-                class="inline-flex items-center gap-1 rounded-full bg-gray-50 px-2 py-0.5 text-[10px] font-medium text-gray-500 border border-gray-100"
+          <!-- ✅ 더보기 액션: 클리핑 밖(안 잘림) -->
+          <div
+            class="absolute right-3 top-3 z-50"
+            @click.stop
+          >
+            <button
+              type="button"
+              class="inline-flex items-center justify-center h-9 w-9 rounded-lg border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-200"
+              aria-label="그룹 액션 메뉴"
+              aria-haspopup="menu"
+              :aria-expanded="actionMenuGroupId === group.id"
+              @click.stop="toggleActionMenu(group.id, $event)"
+              @keydown.esc.stop="closeActionMenu"
+            >
+              <svg
+                class="w-5 h-5"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
               >
-                👥 멤버 {{ group.memberCount }}명
-              </span>
+                <path
+                  d="M12 7a2 2 0 1 0-0.001-4.001A2 2 0 0 0 12 7Zm0 7a2 2 0 1 0-0.001-4.001A2 2 0 0 0 12 14Zm0 7a2 2 0 1 0-0.001-4.001A2 2 0 0 0 12 21Z"
+                />
+              </svg>
+            </button>
 
-              <span
-                v-if="isOwner(group)"
-                class="inline-flex items-center gap-1 rounded-full bg-yellow-100 px-2 py-0.5 text-[10px] font-medium text-yellow-800 border border-yellow-200"
-              >
-                ⭐ 내 소유 그룹
-              </span>
-
-              <span
-                v-else-if="isManager(group)"
-                class="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-700 border border-blue-100"
-              >
-                🛠 매니저
-              </span>
-            </div>
-
-            <div class="flex items-center gap-1">
-              <!-- 그룹 수정 -->
+            <div
+              v-if="actionMenuGroupId === group.id"
+              ref="menuRef"
+              :class="[
+                'absolute right-0 z-50 w-44 max-w-[calc(100vw-16px)] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg',
+                menuPlacement === 'top' ? 'bottom-full mb-2' : 'top-full mt-2',
+              ]"
+              role="menu"
+              @click.stop
+              @keydown.esc.stop="closeActionMenu"
+            >
               <button
                 v-if="canEditGroup(group)"
                 type="button"
-                class="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 bg-white text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-200"
-                @click.stop="goEditGroup(group.id)"
+                class="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                role="menuitem"
+                @click.stop="
+                  () => {
+                    closeActionMenu();
+                    goEditGroup(group.id);
+                  }
+                "
               >
-                수정
+                ✏️ 수정
               </button>
 
-              <!-- 그룹 탈퇴 -->
+              <div class="h-px bg-gray-100" />
+
               <button
                 type="button"
-                class="px-3 py-1.5 text-xs font-semibold rounded-lg border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-red-200"
+                class="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                role="menuitem"
                 :disabled="leavingGroupId === group.id || isOwner(group)"
                 :title="
                   isOwner(group)
-                    ? '소유자는 바로 탈퇴할 수 없습니다. 그룹 수정에서 소유자 변경 후 탈퇴하세요.'
+                    ? '소유자는 바로 탈퇴할 수 없습니다. 소유자 변경 후 탈퇴하세요.'
                     : ''
                 "
-                @click.stop="handleLeaveGroup(group.id)"
+                @click.stop="
+                  () => {
+                    closeActionMenu();
+                    handleLeaveGroup(group.id);
+                  }
+                "
               >
-                <span v-if="leavingGroupId === group.id">탈퇴 중...</span>
-                <span v-else-if="isOwner(group)">탈퇴 불가</span>
-                <span v-else>그룹 탈퇴</span>
+                <span v-if="leavingGroupId === group.id">⏳ 탈퇴 중...</span>
+                <span v-else-if="isOwner(group)">🚫 탈퇴 불가</span>
+                <span v-else>🚪 그룹 탈퇴</span>
               </button>
             </div>
           </div>
