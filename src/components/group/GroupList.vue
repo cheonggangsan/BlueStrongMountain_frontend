@@ -428,7 +428,10 @@ const filteredGroups = computed(() => {
                 ✏️ 수정
               </button>
 
-              <div class="h-px bg-gray-100" />
+              <div
+                v-if="canEditGroup(group)"
+                class="h-px bg-gray-100"
+              />
 
               <button
                 type="button"
