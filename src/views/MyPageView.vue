@@ -22,14 +22,6 @@ const email = ref("");
 const nickname = ref("");
 const originalNickname = ref("");
 const baekjoonId = ref("");
-// const originalBaekjoonId = ref("");
-
-// 백준 아이디 수정 상태
-// const isEditingBaekjoonId = ref(false);
-// const isSavingBaekjoonId = ref(false);
-// const isCheckingBaekjoonId = ref(false);
-// const baekjoonCheckMessage = ref("");
-// const isBaekjoonValid = ref(null); // null: 모름, true: 존재, false: 없음
 
 // 닉네임 수정 상태
 const isEditingNickname = ref(false);
@@ -44,13 +36,6 @@ watch(nickname, () => {
   isNicknameDuplicated.value = null;
   nicknameCheckMessage.value = "";
 });
-
-// 백준 아이디가 바뀌면 검증 결과는 무효화
-// watch(baekjoonId, () => {
-//   if (!isEditingBaekjoonId.value) return;
-//   isBaekjoonValid.value = null;
-//   baekjoonCheckMessage.value = "";
-// });
 
 // ===== 3영역: 비밀번호 변경 =====
 const showPasswordSection = ref(false);
