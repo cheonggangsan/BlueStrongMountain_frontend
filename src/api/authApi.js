@@ -147,3 +147,18 @@ export async function resetPassword({ token, newPassword }) {
   });
   return response.data;
 }
+
+/**
+ * 비밀번호 재확인(재인증)
+ * POST /api/v1/auth/password/verify
+ * body: { userId, password }
+ * res: boolean
+ */
+export async function verifyPassword({ userId, password }) {
+  const response = await httpClient.post("/auth/password/verify", {
+    userId,
+    password,
+  });
+
+  return response.data; // boolean
+}
