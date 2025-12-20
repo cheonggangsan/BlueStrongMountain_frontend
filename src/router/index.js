@@ -164,6 +164,16 @@ router.beforeEach(async (to, from, next) => {
     try {
       group = await fetchGroupById(groupId, { requesterId: uid });
     } catch (e) {
+      if (e?.response?.status === 401) {
+        window.alert("로그인이 필요합니다.");
+
+        return next({
+          name: "Login",
+          query: { redirect: to.fullPath },
+          replace: true,
+        });
+      }
+
       console.error("[router] fetchGroupById error:", e);
       window.alert("그룹 정보를 불러올 수 없습니다.");
       return next({ name: "GroupList" });

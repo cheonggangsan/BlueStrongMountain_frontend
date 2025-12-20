@@ -46,7 +46,12 @@ async function handleSubmit() {
       password: password.value,
     });
 
-    router.push({ name: "GroupList" });
+    const redirect =
+      (route.query.redirect && String(route.query.redirect)) || null;
+
+    const isValidRedirect =
+      redirect && redirect.startsWith("/") && !redirect.startsWith("//");
+    router.replace(isValidRedirect ? redirect : { name: "GroupList" });
   } catch (e) {
     // authStore.error에 백엔드/목 기준 메시지가 들어있도록 설계해둠
     errorMessage.value =

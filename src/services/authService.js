@@ -33,6 +33,8 @@ import {
   mockCheckBaekjoonId,
 } from "@/mocks/auth.mock";
 
+import { USER_STORAGE_KEY } from "../constants/auth";
+
 const USE_MOCK_AUTH = apiMode.auth === "mock";
 
 function toFrontendUser(u) {
@@ -77,12 +79,20 @@ export const authService = {
       return mockGetCurrentUser();
     }
 
-    // TODO: 백엔드에서 /members/me 준비되면 아래 구현
-    // const me = await getMyProfile();
-    // return me;
-    throw new Error(
-      "authService.fetchCurrentUser: not implemented for real API yet",
-    );
+    if (typeof window === "undefined") return null;
+
+    try {
+      const raw = window.localStorage.getItem(USER_STORAGE_KEY);
+      if (!raw) return null;
+
+      const user = JSON.parse(raw);
+      if (!user || typeof user.id !== "number") return null;
+
+      return user;
+    } catch (e) {
+      console.warn("[authService] fetchCurrentUser: parse failed:", e);
+      return null;
+    }
   },
 
   /**

@@ -6,14 +6,15 @@ import { ref } from "vue";
 // 1) vue-router mock
 // =======================
 const pushMock = vi.fn();
+const replaceMock = vi.fn();
+const routeMock = { query: {} };
 
 vi.mock("vue-router", () => ({
   useRouter: () => ({
     push: pushMock,
+    replace: replaceMock,
   }),
-  useRoute: () => ({
-    query: {}, // 기본값: 쿼리 없음
-  }),
+  useRoute: () => routeMock,
 }));
 
 // =======================
@@ -57,6 +58,8 @@ describe("LoginView", () => {
 
     // mock & 상태 초기화
     pushMock.mockReset();
+    replaceMock.mockReset();
+    routeMock.query = {};
     authStore.login.mockReset();
     authStore.resetError.mockReset();
 
@@ -75,9 +78,31 @@ describe("LoginView", () => {
     expect(authStore.login).not.toHaveBeenCalled();
   });
 
-  it("유효한 입력 시 authStore.login을 호출하고 GroupList로 이동한다", async () => {
-    // ✅ 로그인 성공 시나리오
+  it("유효한 입력 시 authStore.login을 호출하고 기본으로 GroupList로 이동한다", async () => {
     authStore.login.mockResolvedValue();
+
+    routeMock.query = {};
+
+    const wrapper = mount(LoginView);
+
+    await wrapper.find("#email").setValue("test@example.com");
+    await wrapper.find("#password").setValue("password123");
+    await wrapper.find("form").trigger("submit.prevent");
+    await flushPromises();
+
+    expect(authStore.login).toHaveBeenCalledWith({
+      email: "test@example.com",
+      password: "password123",
+    });
+
+    expect(replaceMock).toHaveBeenCalledWith({ name: "GroupList" });
+    expect(pushMock).not.toHaveBeenCalled();
+  });
+
+  it("redirect 쿼리가 있으면 로그인 후 해당 경로로 이동한다", async () => {
+    authStore.login.mockResolvedValue();
+
+    routeMock.query = { redirect: "/me" };
 
     const wrapper = mount(LoginView);
 
@@ -92,7 +117,8 @@ describe("LoginView", () => {
       password: "password123",
     });
 
-    expect(pushMock).toHaveBeenCalledWith({ name: "GroupList" });
+    expect(replaceMock).toHaveBeenCalledWith("/me");
+    expect(pushMock).not.toHaveBeenCalled();
   });
 
   it("로그인 실패 시 에러 메시지를 보여준다", async () => {
