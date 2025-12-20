@@ -57,10 +57,30 @@ function handleResize() {
   if (actionMenuGroupId.value) closeActionMenu();
 }
 
-onMounted(() => {
+function handleEditClick(groupId) {
+  closeActionMenu();
+  goEditGroup(groupId);
+}
+
+function handleLeaveClick(groupId) {
+  closeActionMenu();
+  handleLeaveGroup(groupId);
+}
+
+onMounted(async () => {
   document.addEventListener("click", closeActionMenu);
   window.addEventListener("resize", handleResize);
-  window.addEventListener("scroll", closeActionMenu, true); // 스크롤 시 닫기(겹침 방지)
+  window.addEventListener("scroll", closeActionMenu, true);
+
+  const uid = currentUserId.value;
+  if (!uid) {
+    console.warn(
+      "[GroupList] currentUserId가 없어 그룹 목록을 불러오지 않습니다.",
+    );
+    window.alert("로그인이 필요합니다.");
+    return;
+  }
+  await fetchGroups({ requesterId: uid });
 });
 
 onUnmounted(() => {
@@ -72,19 +92,6 @@ onUnmounted(() => {
 const searchQuery = ref("");
 
 const currentUserId = computed(() => authStore.user.value?.id ?? null);
-
-onMounted(async () => {
-  const uid = currentUserId.value;
-  if (!uid) {
-    console.warn(
-      "[GroupList] currentUserId가 없어 그룹 목록을 불러오지 않습니다.",
-    );
-    window.alert("로그인이 필요합니다.");
-    return;
-  }
-
-  await fetchGroups({ requesterId: uid });
-});
 
 function isOwner(group) {
   if (!group) return false;
@@ -418,12 +425,7 @@ const filteredGroups = computed(() => {
                 type="button"
                 class="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                 role="menuitem"
-                @click.stop="
-                  () => {
-                    closeActionMenu();
-                    goEditGroup(group.id);
-                  }
-                "
+                @click.stop="handleEditClick(group.id)"
               >
                 ✏️ 수정
               </button>
@@ -443,12 +445,7 @@ const filteredGroups = computed(() => {
                     ? '소유자는 바로 탈퇴할 수 없습니다. 소유자 변경 후 탈퇴하세요.'
                     : ''
                 "
-                @click.stop="
-                  () => {
-                    closeActionMenu();
-                    handleLeaveGroup(group.id);
-                  }
-                "
+                @click.stop="handleLeaveClick(group.id)"
               >
                 <span v-if="leavingGroupId === group.id">⏳ 탈퇴 중...</span>
                 <span v-else-if="isOwner(group)">🚫 탈퇴 불가</span>
