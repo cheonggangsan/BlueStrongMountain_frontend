@@ -245,4 +245,21 @@ describe("GroupList.vue", () => {
       params: { groupId: 3 },
     });
   });
+
+  it("액션 메뉴 버튼 클릭 시 BoardList로 이동하지 않는다", async () => {
+    const wrapper = mount(GroupList);
+    await flushPromises();
+    await nextTick();
+
+    const item = findGroupItemByName(wrapper, "내가 member만인 그룹");
+    const menuBtn = item.find('button[aria-label="그룹 액션 메뉴"]');
+
+    await menuBtn.trigger("click");
+    await flushPromises();
+
+    expect(pushMock).not.toHaveBeenCalledWith({
+      name: "BoardList",
+      params: { groupId: 3 },
+    });
+  });
 });
