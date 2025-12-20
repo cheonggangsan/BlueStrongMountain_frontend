@@ -257,9 +257,6 @@ describe("GroupList.vue", () => {
     await menuBtn.trigger("click");
     await flushPromises();
 
-    expect(pushMock).not.toHaveBeenCalledWith({
-      name: "BoardList",
-      params: { groupId: 3 },
-    });
+    expect(pushMock).not.toHaveBeenCalled();
   });
 });
