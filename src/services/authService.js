@@ -7,8 +7,16 @@ import {
   resetPassword as resetPasswordApi,
   checkUsernameDuplicate as checkUsernameDuplicateApi,
   verifyBaekjoonId as verifyBaekjoonIdApi,
-  updateBaekjoonId as updateBaekjoonIdApi,
+  verifyPassword as verifyPasswordApi,
 } from "@/api/authApi";
+
+import {
+  fetchUserInfo,
+  changeUsername,
+  changePassword as changePasswordApi,
+  deleteUser,
+} from "@/api/userApi";
+
 import {
   mockLogin,
   mockLogout,
@@ -17,15 +25,27 @@ import {
   mockForgotPassword,
   mockResetPassword,
   mockVerifyPassword,
+  mockFetchUserInfo,
   mockUpdateNickname,
   mockChangePassword,
   mockDeleteAccount,
   mockCheckUsernameDuplicate,
   mockCheckBaekjoonId,
-  mockUpdateBaekjoonId,
 } from "@/mocks/auth.mock";
 
 const USE_MOCK_AUTH = apiMode.auth === "mock";
+
+function toFrontendUser(u) {
+  return {
+    id: u.userId,
+    email: u.email,
+    nickname: u.username,
+    baekjoonId: u.baekjoonHandle ?? "",
+    status: u.status,
+    createdAt: u.createdAt,
+    updatedAt: u.updatedAt,
+  };
+}
 
 export const authService = {
   /**
@@ -107,34 +127,37 @@ export const authService = {
     return resetPasswordApi({ token, newPassword });
   },
 
-  // TODO: after mypage api integration
   /**
    * 비밀번호 재확인 (본인 인증)
-   * - mock: 비밀번호 검증 + 최신 user 반환
-   * - real: TODO(/auth/verify-password 준비 시 연동)
    */
-  async verifyPassword({ password }) {
+  async verifyPassword({ userId, password }) {
     if (USE_MOCK_AUTH) {
-      return mockVerifyPassword({ password });
+      return mockVerifyPassword({ userId, password });
     }
 
-    throw new Error(
-      "authService.verifyPassword: not implemented for real API yet",
-    );
+    return verifyPasswordApi({ userId, password }); // boolean
   },
 
-  // TODO: after mypage api integration
+  /**
+   * (MyPage) 유저 조회
+   */
+  async getUserInfo({ id }) {
+    if (USE_MOCK_AUTH) {
+      const u = await mockFetchUserInfo({ id });
+      return toFrontendUser(u);
+    }
+
+    const u = await fetchUserInfo({ id }); // { userId, username, baekjoonHandle, ... }
+    return toFrontendUser(u);
+  },
+
   /**
    * 비밀번호 변경
    */
-  async changePassword({ newPassword }) {
-    if (USE_MOCK_AUTH) {
-      return mockChangePassword({ newPassword });
-    }
+  async changePassword({ id, newPassword }) {
+    if (USE_MOCK_AUTH) return mockChangePassword({ id, newPassword });
 
-    throw new Error(
-      "authService.changePassword: not implemented for real API yet",
-    );
+    return changePasswordApi({ id, password: newPassword });
   },
 
   /**
@@ -155,45 +178,22 @@ export const authService = {
     return { exists: !!res };
   },
 
-  // TODO: after mypage api integration
   /**
    * 닉네임 변경
    */
-  async updateNickname({ nickname }) {
-    if (USE_MOCK_AUTH) {
-      return mockUpdateNickname({ nickname });
-    }
+  async updateNickname({ id, nickname }) {
+    if (USE_MOCK_AUTH) return mockUpdateNickname({ id, nickname });
 
-    // TODO: memberApi.updateMyProfile({ nickname })로 연동
-    throw new Error(
-      "authService.updateNickname: not implemented for real API yet",
-    );
+    await changeUsername({ id, username: nickname });
+    const u = await fetchUserInfo({ id });
+    return { user: toFrontendUser(u) };
   },
 
-  // TODO: after mypage api integration
-  /**
-   * 백준 아이디 변경
-   */
-  async updateBaekjoonId({ baekjoonId }) {
-    if (USE_MOCK_AUTH) {
-      return mockUpdateBaekjoonId({ baekjoonId });
-    }
-
-    return updateBaekjoonIdApi({ baekjoonId });
-  },
-
-  // TODO: after mypage api integration
   /**
    * 회원 탈퇴
    */
-  async deleteAccount() {
-    if (USE_MOCK_AUTH) {
-      return mockDeleteAccount();
-    }
-
-    // TODO: memberApi.deleteMyAccount()로 연동
-    throw new Error(
-      "authService.deleteAccount: not implemented for real API yet",
-    );
+  async deleteAccount({ id }) {
+    if (USE_MOCK_AUTH) return mockDeleteAccount({ id });
+    return deleteUser({ id });
   },
 };

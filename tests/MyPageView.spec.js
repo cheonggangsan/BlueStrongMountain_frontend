@@ -24,6 +24,7 @@ vi.mock("@/data/authStore", () => {
   if (!g.initializedRef) g.initializedRef = ref(false);
   if (!g.fetchCurrentUserMock) g.fetchCurrentUserMock = vi.fn(async () => {});
   if (!g.logoutMock) g.logoutMock = vi.fn(async () => {});
+  if (!g.updateUserMock) g.updateUserMock = vi.fn(() => {});
 
   return {
     useAuthStore: () => ({
@@ -31,6 +32,7 @@ vi.mock("@/data/authStore", () => {
       initialized: g.initializedRef,
       fetchCurrentUser: g.fetchCurrentUserMock,
       logout: g.logoutMock,
+      updateUser: g.updateUserMock,
     }),
   };
 });
@@ -40,11 +42,10 @@ vi.mock("@/data/authStore", () => {
 // =======================
 vi.mock("@/services/authService", () => ({
   authService: {
-    verifyPassword: vi.fn(),
+    verifyPassword: vi.fn(), // boolean
+    getUserInfo: vi.fn(), // { id, email, nickname }
     checkUsernameDuplicate: vi.fn(),
-    updateNickname: vi.fn(),
-    checkBaekjoonId: vi.fn(),
-    updateBaekjoonId: vi.fn(),
+    updateNickname: vi.fn(), // { user }
     changePassword: vi.fn(),
     deleteAccount: vi.fn(),
   },
@@ -59,8 +60,7 @@ async function goToProfileStep(wrapper, overrides = {}) {
   wrapper.vm.email = overrides.email ?? "user@example.com";
   wrapper.vm.nickname = overrides.nickname ?? "oldNick";
   wrapper.vm.originalNickname = overrides.originalNickname ?? "oldNick";
-  wrapper.vm.baekjoonId = overrides.baekjoonId ?? "";
-  wrapper.vm.originalBaekjoonId = overrides.originalBaekjoonId ?? "";
+  wrapper.vm.baekjoonId = overrides.baekjoonId ?? "tourist";
   await nextTick();
 }
 
@@ -76,10 +76,12 @@ describe("MyPageView.vue", () => {
         id: 1,
         email: "user@example.com",
         nickname: "oldNick",
+        baekjoonId: "tourist",
       };
       g.initializedRef.value = true;
       g.fetchCurrentUserMock.mockReset();
       g.logoutMock.mockReset();
+      g.updateUserMock.mockReset();
     }
 
     pushMock.mockReset();
@@ -105,32 +107,28 @@ describe("MyPageView.vue", () => {
 
   it("비밀번호 재확인에서 8자 미만이면 에러를 보여주고 API를 호출하지 않는다", async () => {
     const verifySpy = authService.verifyPassword;
-    verifySpy.mockResolvedValue({});
+    verifySpy.mockResolvedValue(true);
 
     const wrapper = mount(MyPageView);
     await flushPromises();
 
     await wrapper.get("#verify-password").setValue("short");
-
-    const verifyBtn = wrapper
-      .findAll("button")
-      .find((b) => b.text().includes("본인 확인하기"));
-
-    await verifyBtn.trigger("click");
+    await wrapper.get('[data-testid="verify-submit"]').trigger("click");
     await flushPromises();
 
     expect(wrapper.text()).toContain("비밀번호는 최소 8자 이상이어야 합니다.");
     expect(verifySpy).not.toHaveBeenCalled();
   });
 
-  it("올바른 비밀번호 입력 시 authService.verifyPassword 호출 후 프로필 단계로 전환되고, 이메일/닉네임/백준 아이디가 세팅된다", async () => {
+  it("올바른 비밀번호 입력 시 verifyPassword(userId,pwd) -> getUserInfo 호출 후 프로필 단계로 전환된다", async () => {
     const verifySpy = authService.verifyPassword;
-    verifySpy.mockResolvedValue({
-      user: {
-        email: "me@example.com",
-        nickname: "myNick",
-        baekjoonId: "tourist",
-      },
+    verifySpy.mockResolvedValue(true);
+
+    const getInfoSpy = authService.getUserInfo;
+    getInfoSpy.mockResolvedValue({
+      id: 1,
+      email: "me@example.com",
+      nickname: "myNick",
     });
 
     const wrapper = mount(MyPageView);
@@ -138,13 +136,14 @@ describe("MyPageView.vue", () => {
 
     await wrapper.get("#verify-password").setValue("password123");
 
-    const verifyBtn = wrapper
-      .findAll("button")
-      .find((b) => b.text().includes("본인 확인하기"));
-    await verifyBtn.trigger("click");
+    await wrapper.get('[data-testid="verify-submit"]').trigger("click");
     await flushPromises();
 
-    expect(verifySpy).toHaveBeenCalledWith({ password: "password123" });
+    expect(verifySpy).toHaveBeenCalledWith({
+      userId: 1,
+      password: "password123",
+    });
+    expect(getInfoSpy).toHaveBeenCalledWith({ id: 1 });
 
     // 전역 메시지 + 프로필 영역 표시
     expect(wrapper.text()).toContain("본인 확인이 완료되었습니다.");
@@ -153,28 +152,30 @@ describe("MyPageView.vue", () => {
 
     const nicknameInput = wrapper.get("#mypage-nickname");
     expect(nicknameInput.element.value).toBe("myNick");
-
-    const baekjoonInput = wrapper.get("#mypage-baekjoon-id");
-    expect(baekjoonInput.element.value).toBe("tourist");
   });
 
   it("비밀번호가 틀리면 에러 메시지를 보여준다", async () => {
     const verifySpy = authService.verifyPassword;
-    verifySpy.mockRejectedValue({ code: "INVALID_PASSWORD" });
+    verifySpy.mockRejectedValue({ response: { status: 401 } });
 
     const wrapper = mount(MyPageView);
     await flushPromises();
 
     await wrapper.get("#verify-password").setValue("wrongpass");
-
-    const verifyBtn = wrapper
-      .findAll("button")
-      .find((b) => b.text().includes("본인 확인하기"));
-    await verifyBtn.trigger("click");
+    await wrapper.get('[data-testid="verify-submit"]').trigger("click");
     await flushPromises();
 
     expect(verifySpy).toHaveBeenCalled();
     expect(wrapper.text()).toContain("비밀번호가 올바르지 않습니다.");
+  });
+
+  it("백준 아이디 수정 UI가 노출되지 않는다(정책 반영)", async () => {
+    const wrapper = mount(MyPageView);
+    await flushPromises();
+    await goToProfileStep(wrapper);
+
+    expect(wrapper.text()).not.toContain("아이디 수정");
+    expect(wrapper.find("#mypage-baekjoon-id").exists()).toBe(false);
   });
 
   it("닉네임 중복 확인에서 사용 가능한 닉네임이면 메시지를 표시한다", async () => {
@@ -189,26 +190,17 @@ describe("MyPageView.vue", () => {
     await goToProfileStep(wrapper);
 
     // 닉네임 수정 모드 진입
-    const editBtn = wrapper
-      .findAll("button")
-      .find((b) => b.text().includes("닉네임 수정"));
-    await editBtn.trigger("click");
-
+    await wrapper.get('[data-testid="nickname-edit"]').trigger("click");
     await wrapper.get("#mypage-nickname").setValue("newNick");
 
-    const checkBtn = wrapper
-      .findAll("button")
-      .find((b) => b.text().includes("중복 확인"));
-    expect(checkBtn).toBeTruthy();
-
-    await checkBtn.trigger("click");
+    await wrapper.get('[data-testid="nickname-check"]').trigger("click");
     await flushPromises();
 
     expect(checkSpy).toHaveBeenCalledWith({ username: "newNick" });
     expect(wrapper.text()).toContain("사용 가능한 닉네임입니다.");
   });
 
-  it("닉네임 중복 확인 없이 저장 시 에러를 보여주고 authService.updateNickname을 호출하지 않는다", async () => {
+  it("닉네임 중복 확인 없이 저장 시 에러를 보여주고 updateNickname을 호출하지 않는다", async () => {
     const updateSpy = authService.updateNickname;
     updateSpy.mockResolvedValue({
       user: {
@@ -221,24 +213,17 @@ describe("MyPageView.vue", () => {
     await flushPromises();
     await goToProfileStep(wrapper);
 
-    const editBtn = wrapper
-      .findAll("button")
-      .find((b) => b.text().includes("닉네임 수정"));
-    await editBtn.trigger("click");
-
+    await wrapper.get('[data-testid="nickname-edit"]').trigger("click");
     await wrapper.get("#mypage-nickname").setValue("newNick");
 
-    const saveBtn = wrapper
-      .findAll("button")
-      .find((b) => b.text().includes("저장"));
-    await saveBtn.trigger("click");
+    await wrapper.get('[data-testid="nickname-save"]').trigger("click");
     await flushPromises();
 
     expect(wrapper.text()).toContain("닉네임 중복 확인 후 저장해주세요.");
     expect(updateSpy).not.toHaveBeenCalled();
   });
 
-  it("닉네임 중복 확인 후 저장 시 authService.checkUsernameDuplicate과 authService.updateNickname를 호출한다", async () => {
+  it("닉네임 중복 확인 후 저장 시 checkUsernameDuplicate + updateNickname(id,nickname) 호출, store는 updateUser로 동기화한다", async () => {
     const g = globalThis.__authMocks;
 
     const checkSpy = authService.checkUsernameDuplicate;
@@ -249,260 +234,49 @@ describe("MyPageView.vue", () => {
 
     const updateSpy = authService.updateNickname;
     updateSpy.mockResolvedValue({
-      user: {
-        email: "user@example.com",
-        nickname: "newNick",
-      },
+      user: { id: 1, email: "user@example.com", nickname: "newNick" },
     });
 
     const wrapper = mount(MyPageView);
     await flushPromises();
     await goToProfileStep(wrapper);
 
-    const editBtn = wrapper
-      .findAll("button")
-      .find((b) => b.text().includes("닉네임 수정"));
-    await editBtn.trigger("click");
-
+    await wrapper.get('[data-testid="nickname-edit"]').trigger("click");
     await wrapper.get("#mypage-nickname").setValue("newNick");
 
-    const checkBtn = wrapper
-      .findAll("button")
-      .find((b) => b.text().includes("중복 확인"));
-    await checkBtn.trigger("click");
+    await wrapper.get('[data-testid="nickname-check"]').trigger("click");
     await flushPromises();
 
-    const saveBtn = wrapper
-      .findAll("button")
-      .find((b) => b.text().includes("저장"));
-    await saveBtn.trigger("click");
+    await wrapper.get('[data-testid="nickname-save"]').trigger("click");
     await flushPromises();
 
-    expect(checkSpy).toHaveBeenCalled();
-    expect(updateSpy).toHaveBeenCalledWith({ nickname: "newNick" });
-    expect(g.fetchCurrentUserMock).toHaveBeenCalledWith({ force: true });
+    expect(checkSpy).toHaveBeenCalledWith({ username: "newNick" });
+    expect(updateSpy).toHaveBeenCalledWith({ id: 1, nickname: "newNick" });
+
+    expect(g.updateUserMock).toHaveBeenCalledWith({ nickname: "newNick" });
+    expect(g.fetchCurrentUserMock).not.toHaveBeenCalledWith({ force: true });
+
     expect(wrapper.text()).toContain("닉네임이 변경되었습니다.");
   });
 
-  // ============================
-  // 백준 아이디 관련 테스트
-  // ============================
-
-  it("백준 아이디 입력이 없으면 '아이디 확인' 버튼이 비활성화되고 authService.checkBaekjoonId를 호출하지 않는다", async () => {
-    const checkSpy = authService.checkBaekjoonId;
-    checkSpy.mockResolvedValue({ exists: true });
-
+  it("백준 아이디가 이메일처럼 표시되고, 수정 버튼은 노출되지 않는다", async () => {
     const wrapper = mount(MyPageView);
     await flushPromises();
+    await goToProfileStep(wrapper, { baekjoonId: "tourist" });
 
-    // 프로필 단계 & 백준 아이디 없음으로 세팅
-    await goToProfileStep(wrapper, {
-      baekjoonId: "",
-      originalBaekjoonId: "",
-    });
+    const box = wrapper.get('[data-testid="baekjoon-display"]');
+    expect(box.text()).toContain("tourist");
+    expect(box.text()).toContain("수정 불가");
 
-    // "아이디 수정" 눌러서 편집 모드 진입
-    const editBtn = wrapper
-      .findAll("button")
-      .find((b) => b.text().includes("아이디 수정"));
-    await editBtn.trigger("click");
-    await flushPromises();
-
-    // "아이디 확인" 버튼 찾기
-    const checkBtn = wrapper
-      .findAll("button")
-      .find((b) => b.text().includes("아이디 확인"));
-
-    // 입력이 없으므로 버튼이 비활성화되어 있어야 한다
-    expect(checkBtn.element.disabled).toBe(true);
-
-    // 클릭해도 실제 API는 호출되지 않아야 한다
-    await checkBtn.trigger("click");
-    await flushPromises();
-
-    expect(checkSpy).not.toHaveBeenCalled();
-  });
-
-  it("현재 등록된 백준 아이디와 동일한 값을 확인하면 API 호출 없이 유효 처리한다", async () => {
-    const checkSpy = authService.checkBaekjoonId;
-    checkSpy.mockResolvedValue({ exists: true });
-
-    const wrapper = mount(MyPageView);
-    await flushPromises();
-    await goToProfileStep(wrapper, {
-      baekjoonId: "tourist",
-      originalBaekjoonId: "tourist",
-    });
-
-    const editBtn = wrapper
-      .findAll("button")
-      .find((b) => b.text().includes("아이디 수정"));
-    await editBtn.trigger("click");
-    await flushPromises();
-
-    const checkBtn = wrapper
-      .findAll("button")
-      .find((b) => b.text().includes("아이디 확인"));
-    await checkBtn.trigger("click");
-    await flushPromises();
-
-    expect(checkSpy).not.toHaveBeenCalled();
-    expect(wrapper.text()).toContain("현재 등록된 백준 아이디입니다.");
-  });
-
-  it("존재하는 백준 아이디라면 아이디 확인 시 성공 메시지를 보여준다", async () => {
-    const checkSpy = authService.checkBaekjoonId;
-    checkSpy.mockResolvedValue({ exists: true });
-
-    const wrapper = mount(MyPageView);
-    await flushPromises();
-    await goToProfileStep(wrapper, {
-      baekjoonId: "",
-      originalBaekjoonId: "",
-    });
-
-    const editBtn = wrapper
-      .findAll("button")
-      .find((b) => b.text().includes("아이디 수정"));
-    await editBtn.trigger("click");
-    await flushPromises();
-
-    await wrapper.get("#mypage-baekjoon-id").setValue("tourist");
-
-    const checkBtn = wrapper
-      .findAll("button")
-      .find((b) => b.text().includes("아이디 확인"));
-    await checkBtn.trigger("click");
-    await flushPromises();
-
-    expect(checkSpy).toHaveBeenCalledWith({ handle: "tourist" });
-    expect(wrapper.text()).toContain("존재하는 백준 아이디입니다.");
-  });
-
-  it("백준 아이디 확인 없이 저장 시 에러를 보여주고 authService.updateBaekjoonId를 호출하지 않는다", async () => {
-    const updateSpy = authService.updateBaekjoonId;
-    updateSpy.mockResolvedValue({
-      user: {
-        email: "user@example.com",
-        nickname: "oldNick",
-        baekjoonId: "tourist",
-      },
-    });
-
-    const wrapper = mount(MyPageView);
-    await flushPromises();
-    await goToProfileStep(wrapper, {
-      baekjoonId: "",
-      originalBaekjoonId: "",
-    });
-
-    const editBtn = wrapper
-      .findAll("button")
-      .find((b) => b.text().includes("아이디 수정"));
-    await editBtn.trigger("click");
-    await flushPromises();
-
-    await wrapper.get("#mypage-baekjoon-id").setValue("tourist");
-
-    const saveBtn = wrapper
-      .findAll("button")
-      .find((b) => b.text().includes("저장"));
-    await saveBtn.trigger("click");
-    await flushPromises();
-
-    expect(wrapper.text()).toContain(
-      "백준 아이디가 실제로 존재하는지 확인 버튼을 눌러주세요.",
-    );
-    expect(updateSpy).not.toHaveBeenCalled();
-  });
-
-  it("백준 아이디 확인 후 저장 시 authService.checkBaekjoonId와 fetchCurrentUser를 호출한다", async () => {
-    const g = globalThis.__authMocks;
-
-    const checkSpy = authService.checkBaekjoonId;
-    checkSpy.mockResolvedValue({ exists: true });
-
-    const updateSpy = authService.updateBaekjoonId;
-    updateSpy.mockResolvedValue({
-      user: {
-        email: "user@example.com",
-        nickname: "oldNick",
-        baekjoonId: "tourist",
-      },
-    });
-
-    const wrapper = mount(MyPageView);
-    await flushPromises();
-    await goToProfileStep(wrapper, {
-      baekjoonId: "",
-      originalBaekjoonId: "",
-    });
-
-    const editBtn = wrapper
-      .findAll("button")
-      .find((b) => b.text().includes("아이디 수정"));
-    await editBtn.trigger("click");
-    await flushPromises();
-
-    await wrapper.get("#mypage-baekjoon-id").setValue("tourist");
-
-    const checkBtn = wrapper
-      .findAll("button")
-      .find((b) => b.text().includes("아이디 확인"));
-    await checkBtn.trigger("click");
-    await flushPromises();
-
-    const saveBtn = wrapper
-      .findAll("button")
-      .find((b) => b.text().includes("저장"));
-    await saveBtn.trigger("click");
-    await flushPromises();
-
-    expect(checkSpy).toHaveBeenCalledWith({ handle: "tourist" });
-    expect(updateSpy).toHaveBeenCalledWith({ baekjoonId: "tourist" });
-    expect(g.fetchCurrentUserMock).toHaveBeenCalledWith({ force: true });
-    expect(wrapper.text()).toContain("백준 아이디가 변경되었습니다.");
-  });
-
-  it("백준 아이디를 빈 문자열로 저장하려 하면 에러를 보여주고 authService.updateBaekjoonId를 호출하지 않는다", async () => {
-    const updateSpy = authService.updateBaekjoonId;
-    updateSpy.mockResolvedValue({
-      user: {
-        email: "user@example.com",
-        nickname: "oldNick",
-        baekjoonId: "",
-      },
-    });
-
-    const wrapper = mount(MyPageView);
-    await flushPromises();
-    await goToProfileStep(wrapper, {
-      baekjoonId: "tourist",
-      originalBaekjoonId: "tourist",
-    });
-
-    const editBtn = wrapper
-      .findAll("button")
-      .find((b) => b.text().includes("아이디 수정"));
-    await editBtn.trigger("click");
-    await flushPromises();
-
-    await wrapper.get("#mypage-baekjoon-id").setValue("");
-    const saveBtn = wrapper
-      .findAll("button")
-      .find((b) => b.text().includes("저장"));
-    await saveBtn.trigger("click");
-    await flushPromises();
-
-    expect(wrapper.text()).toContain("백준 아이디를 비울 수 없습니다.");
-    expect(updateSpy).not.toHaveBeenCalled();
+    expect(wrapper.text()).not.toContain("아이디 수정");
+    expect(wrapper.text()).not.toContain("아이디 확인");
   });
 
   // ============================
   // 비밀번호 / 탈퇴 기존 테스트
   // ============================
 
-  it("비밀번호 변경에서 8자 미만이면 에러를 보여주고 authService.changePassword를 호출하지 않는다", async () => {
+  it("비밀번호 변경에서 8자 미만이면 에러를 보여주고 changePassword를 호출하지 않는다", async () => {
     const changeSpy = authService.changePassword;
     changeSpy.mockResolvedValue({});
 
@@ -511,26 +285,20 @@ describe("MyPageView.vue", () => {
     await goToProfileStep(wrapper);
 
     // 비밀번호 변경 영역 열기
-    const openBtn = wrapper
-      .findAll("button")
-      .find((b) => b.text().includes("열기"));
-    await openBtn.trigger("click");
+    await wrapper.get('[data-testid="password-toggle"]').trigger("click");
     await flushPromises();
 
     await wrapper.get("#mypage-new-password").setValue("short");
     await wrapper.get("#mypage-new-password-confirm").setValue("short");
 
-    const changeBtn = wrapper
-      .findAll("button")
-      .find((b) => b.text().includes("비밀번호 변경하기"));
-    await changeBtn.trigger("click");
+    await wrapper.get('[data-testid="password-submit"]').trigger("click");
     await flushPromises();
 
     expect(wrapper.text()).toContain("비밀번호는 최소 8자 이상이어야 합니다.");
     expect(changeSpy).not.toHaveBeenCalled();
   });
 
-  it("비밀번호 변경 성공 시 authService.changePassword와 logout을 호출하고 Login으로 이동한다", async () => {
+  it("비밀번호 변경 성공 시 changePassword(id,newPassword) + logout 호출 후 Login으로 이동한다", async () => {
     const g = globalThis.__authMocks;
 
     const changeSpy = authService.changePassword;
@@ -540,10 +308,7 @@ describe("MyPageView.vue", () => {
     await flushPromises();
     await goToProfileStep(wrapper);
 
-    const openBtn = wrapper
-      .findAll("button")
-      .find((b) => b.text().includes("열기"));
-    await openBtn.trigger("click");
+    await wrapper.get('[data-testid="password-toggle"]').trigger("click");
     await flushPromises();
 
     await wrapper.get("#mypage-new-password").setValue("newPassword123");
@@ -551,13 +316,11 @@ describe("MyPageView.vue", () => {
       .get("#mypage-new-password-confirm")
       .setValue("newPassword123");
 
-    const changeBtn = wrapper
-      .findAll("button")
-      .find((b) => b.text().includes("비밀번호 변경하기"));
-    await changeBtn.trigger("click");
+    await wrapper.get('[data-testid="password-submit"]').trigger("click");
     await flushPromises();
 
     expect(changeSpy).toHaveBeenCalledWith({
+      id: 1,
       newPassword: "newPassword123",
     });
     expect(g.logoutMock).toHaveBeenCalled();
@@ -567,7 +330,7 @@ describe("MyPageView.vue", () => {
     });
   });
 
-  it("회원 탈퇴 확인 후 authService.deleteAccount와 logout을 호출하고 Home으로 이동한다", async () => {
+  it("회원 탈퇴 확인 후 deleteAccount(id)와 logout을 호출하고 Home으로 이동한다", async () => {
     const g = globalThis.__authMocks;
 
     const deleteSpy = authService.deleteAccount;
@@ -577,25 +340,19 @@ describe("MyPageView.vue", () => {
     await flushPromises();
     await goToProfileStep(wrapper);
 
-    const toggleDeleteBtn = wrapper
-      .findAll("button")
-      .find((b) => b.text().includes("탈퇴하기"));
-    await toggleDeleteBtn.trigger("click");
+    await wrapper.get('[data-testid="delete-toggle"]').trigger("click");
     await flushPromises();
 
-    const input = wrapper.get("input[placeholder*='탈퇴합니다']");
-    await input.setValue("탈퇴합니다");
+    await wrapper.get('[data-testid="delete-input"]').setValue("탈퇴합니다");
     await flushPromises();
 
-    const confirmBtn = wrapper
-      .findAll("button")
-      .find((b) => b.text().includes("정말 탈퇴하기"));
+    const confirmBtn = wrapper.get('[data-testid="delete-confirm"]');
     expect(confirmBtn.element.disabled).toBe(false);
 
     await confirmBtn.trigger("click");
     await flushPromises();
 
-    expect(deleteSpy).toHaveBeenCalled();
+    expect(deleteSpy).toHaveBeenCalledWith({ id: 1 });
     expect(g.logoutMock).toHaveBeenCalled();
     expect(pushMock).toHaveBeenCalledWith({ name: "Home" });
   });

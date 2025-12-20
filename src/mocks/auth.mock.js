@@ -7,12 +7,42 @@ function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function nowIso() {
+  return new Date().toISOString();
+}
+
+/**
+ * 로컬스토리지에 예전 스키마가 남아 있어도 깨지지 않도록
+ * 저장/조회 시 내부 표준 형태로 정규화
+ *
+ * 내부 표준:
+ * { id, email, nickname, password, baekjoonId, status, createdAt, updatedAt }
+ */
+function normalizeUser(u) {
+  const id = u?.id ?? u?.userId ?? Date.now();
+  const createdAt = u?.createdAt ?? nowIso();
+  const updatedAt = u?.updatedAt ?? createdAt;
+
+  return {
+    id,
+    email: u?.email ?? "",
+    nickname: u?.nickname ?? u?.username ?? "",
+    password: u?.password ?? "",
+    // 과거 baekjoonId / 최신 baekjoonHandle 모두 수용
+    baekjoonId: u?.baekjoonId ?? u?.baekjoonHandle ?? u?.baekjoon ?? "",
+    status: u?.status ?? "ACTIVE",
+    createdAt,
+    updatedAt,
+  };
+}
+
 function loadUsers() {
   if (typeof window === "undefined") return [];
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY_USERS);
     if (!raw) return [];
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.map(normalizeUser) : [];
   } catch (e) {
     console.error("Failed to parse users from localStorage", e);
     return [];
@@ -21,7 +51,11 @@ function loadUsers() {
 
 function saveUsers(users) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(users));
+  // 저장도 normalize하여 스키마 통일
+  window.localStorage.setItem(
+    STORAGE_KEY_USERS,
+    JSON.stringify((users ?? []).map(normalizeUser)),
+  );
 }
 
 function loadResetTokens() {
@@ -108,12 +142,17 @@ export async function mockSignup({ email, nickname, password, baekjoonId }) {
     throw error;
   }
 
+  const createdAt = nowIso();
+
   const newUser = {
     id: Date.now(),
     email,
     nickname,
     password, // ⚠️ 실제 프로덕션에서는 평문 저장 금지 (BCrypt 등 사용)
-    baekjoonId,
+    baekjoonId: baekjoonId ?? "",
+    status: "ACTIVE",
+    createdAt,
+    updatedAt: createdAt,
   };
 
   const nextUsers = [...users, newUser];
@@ -164,6 +203,7 @@ export async function mockLogin({ email, password }) {
         id: user.id,
         email: user.email,
         nickname: user.nickname,
+        baekjoonId: user.baekjoonId ?? "",
       }),
     );
 
@@ -177,6 +217,7 @@ export async function mockLogin({ email, password }) {
       id: user.id,
       email: user.email,
       nickname: user.nickname,
+      baekjoonId: user.baekjoonId ?? "",
     },
     // JWT 도입 시 함께 반환:
     // accessToken,
@@ -189,7 +230,13 @@ export function mockGetCurrentUser() {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY_CURRENT_USER);
     if (!raw) return null;
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    return {
+      id: parsed?.id ?? parsed?.userId ?? null,
+      email: parsed?.email ?? "",
+      nickname: parsed?.nickname ?? parsed?.username ?? "",
+      baekjoonId: parsed?.baekjoonId ?? parsed?.baekjoonHandle ?? "",
+    };
   } catch (e) {
     console.error("Failed to parse currentUser from localStorage", e);
     return null;
@@ -271,6 +318,7 @@ export async function mockResetPassword({ token, newPassword }) {
   }
 
   users[idx].password = newPassword; // ⚠️ 목이라 그냥 저장
+  users[idx].updatedAt = nowIso();
   saveUsers(users);
 
   // 해당 토큰은 한 번만 사용 가능하도록 제거
@@ -283,18 +331,20 @@ export async function mockResetPassword({ token, newPassword }) {
   return { ok: true };
 }
 
-export async function mockVerifyPassword({ password }) {
+export async function mockVerifyPassword({ userId, password }) {
   await delay(300);
 
   const current = mockGetCurrentUser();
-  if (!current) {
+  const targetId = userId ?? current?.id;
+
+  if (!targetId) {
     const error = new Error("로그인 상태가 아닙니다.");
     error.code = "NOT_LOGGED_IN";
     throw error;
   }
 
   const users = loadUsers();
-  const user = users.find((u) => u.id === current.id);
+  const user = users.find((u) => u.id === targetId);
 
   if (!user || user.password !== password) {
     const error = new Error("비밀번호가 올바르지 않습니다.");
@@ -302,19 +352,43 @@ export async function mockVerifyPassword({ password }) {
     throw error;
   }
 
-  // 비밀번호까지 맞으면, 최신 프로필 리턴
+  return true;
+}
+
+export async function mockFetchUserInfo({ id }) {
+  await delay(200);
+
+  const current = mockGetCurrentUser();
+  const targetId = id ?? current?.id;
+
+  if (!targetId) {
+    const error = new Error("로그인 상태가 아닙니다.");
+    error.code = "NOT_LOGGED_IN";
+    throw error;
+  }
+
+  const users = loadUsers();
+  const user = users.find((u) => u.id === targetId);
+
+  if (!user) {
+    const error = new Error("사용자를 찾을 수 없습니다.");
+    error.code = "USER_NOT_FOUND";
+    throw error;
+  }
+
   return {
-    user: {
-      id: user.id,
-      email: user.email,
-      nickname: user.nickname,
-      baekjoonId: user.baekjoonId,
-    },
+    userId: user.id,
+    email: user.email,
+    username: user.nickname,
+    baekjoonHandle: user.baekjoonId || null,
+    status: user.status ?? "ACTIVE",
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt ?? user.createdAt,
   };
 }
 
 // ===== 닉네임 변경 =====
-export async function mockUpdateNickname({ nickname }) {
+export async function mockUpdateNickname(payload) {
   await delay(400);
 
   const current = mockGetCurrentUser();
@@ -324,8 +398,11 @@ export async function mockUpdateNickname({ nickname }) {
     throw error;
   }
 
+  const nickname = payload?.nickname ?? payload?.username ?? "";
+  const targetId = payload?.id ?? payload?.userId ?? current.id;
+
   const users = loadUsers();
-  const idx = users.findIndex((u) => u.id === current.id);
+  const idx = users.findIndex((u) => u.id === targetId);
 
   if (idx === -1) {
     const error = new Error("사용자를 찾을 수 없습니다.");
@@ -334,9 +411,10 @@ export async function mockUpdateNickname({ nickname }) {
   }
 
   users[idx].nickname = nickname;
+  users[idx].updatedAt = nowIso();
   saveUsers(users);
 
-  // currentUser 캐시도 최신 닉네임으로 업데이트
+  // currentUser 캐시도 업데이트
   if (typeof window !== "undefined") {
     window.localStorage.setItem(
       STORAGE_KEY_CURRENT_USER,
@@ -344,6 +422,7 @@ export async function mockUpdateNickname({ nickname }) {
         id: users[idx].id,
         email: users[idx].email,
         nickname: users[idx].nickname,
+        baekjoonId: users[idx].baekjoonId ?? "",
       }),
     );
   }
@@ -353,57 +432,13 @@ export async function mockUpdateNickname({ nickname }) {
       id: users[idx].id,
       email: users[idx].email,
       nickname: users[idx].nickname,
-    },
-  };
-}
-
-export async function mockUpdateBaekjoonId({ baekjoonId }) {
-  await delay(400);
-
-  const current = mockGetCurrentUser();
-  if (!current) {
-    const error = new Error("로그인 상태가 아닙니다.");
-    error.code = "NOT_LOGGED_IN";
-    throw error;
-  }
-
-  const users = loadUsers();
-  const idx = users.findIndex((u) => u.id === current.id);
-
-  if (idx === -1) {
-    const error = new Error("사용자를 찾을 수 없습니다.");
-    error.code = "USER_NOT_FOUND";
-    throw error;
-  }
-
-  users[idx].baekjoonId = baekjoonId;
-  saveUsers(users);
-
-  // currentUser 캐시도 최신 백준 아이디로 업데이트
-  if (typeof window !== "undefined") {
-    window.localStorage.setItem(
-      STORAGE_KEY_CURRENT_USER,
-      JSON.stringify({
-        id: users[idx].id,
-        email: users[idx].email,
-        nickname: users[idx].nickname,
-        baekjoonId: users[idx].baekjoonId,
-      }),
-    );
-  }
-
-  return {
-    user: {
-      id: users[idx].id,
-      email: users[idx].email,
-      nickname: users[idx].nickname,
-      baekjoonId: users[idx].baekjoonId,
+      baekjoonId: users[idx].baekjoonId ?? "",
     },
   };
 }
 
 // ===== 비밀번호 변경 =====
-export async function mockChangePassword({ newPassword }) {
+export async function mockChangePassword(payload) {
   await delay(400);
 
   const current = mockGetCurrentUser();
@@ -413,8 +448,11 @@ export async function mockChangePassword({ newPassword }) {
     throw error;
   }
 
+  const newPassword = payload?.newPassword ?? payload?.password ?? "";
+  const targetId = payload?.id ?? payload?.userId ?? current.id;
+
   const users = loadUsers();
-  const idx = users.findIndex((u) => u.id === current.id);
+  const idx = users.findIndex((u) => u.id === targetId);
 
   if (idx === -1) {
     const error = new Error("사용자를 찾을 수 없습니다.");
@@ -423,6 +461,7 @@ export async function mockChangePassword({ newPassword }) {
   }
 
   users[idx].password = newPassword;
+  users[idx].updatedAt = nowIso();
   saveUsers(users);
 
   // 비밀번호 바꾸면 보통 세션/로그인을 끊는 편이라,
@@ -431,7 +470,7 @@ export async function mockChangePassword({ newPassword }) {
 }
 
 // ===== 회원 탈퇴 =====
-export async function mockDeleteAccount() {
+export async function mockDeleteAccount(payload = {}) {
   await delay(400);
 
   const current = mockGetCurrentUser();
@@ -441,8 +480,10 @@ export async function mockDeleteAccount() {
     throw error;
   }
 
+  const targetId = payload?.id ?? payload?.userId ?? current.id;
+
   const users = loadUsers();
-  const nextUsers = users.filter((u) => u.id !== current.id);
+  const nextUsers = users.filter((u) => u.id !== targetId);
   saveUsers(nextUsers);
 
   // 로그인 정보/토큰 정리
@@ -450,36 +491,3 @@ export async function mockDeleteAccount() {
 
   return { ok: true };
 }
-
-/**
- * ===== 실제 백엔드 전환 시 예시 =====
- *
- * // authApi.js
- * export async function verifyPassword({ password }) {
- *   return httpClient.post("/auth/verify-password", { password });
- * }
- *
- * export async function changePassword({ newPassword }) {
- *   return httpClient.post("/auth/change-password", { newPassword });
- * }
- *
- * // memberApi.js
- * export async function updateMyProfile({ nickname }) {
- *   return httpClient.patch("/members/me", { nickname });
- * }
- *
- * export async function deleteMyAccount() {
- *   return httpClient.delete("/members/me");
- * }
- */
-
-/**
- * ===== 나중에 JWT로 전환할 때 예시 =====
- *
- * // 로그인 시
- * // const { user, accessToken, refreshToken } = await mockLogin({ email, password });
- * // window.localStorage.setItem(STORAGE_KEY_ACCESS_TOKEN, accessToken);
- *
- * // httpClient 인터셉터에서 ACCESS_TOKEN을 Authorization 헤더로 붙이고,
- * // refreshToken은 httpOnly 쿠키 or 별도 저장전략 사용.
- */

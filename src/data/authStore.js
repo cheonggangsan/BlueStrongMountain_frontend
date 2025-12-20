@@ -17,6 +17,11 @@ function clearUser() {
   state.user = null;
 }
 
+function updateUser(patch) {
+  if (!state.user) return;
+  state.user = { ...state.user, ...patch };
+}
+
 /**
  * 로그인
  * @param {{ email: string, password: string }} credentials
@@ -102,5 +107,7 @@ export function useAuthStore() {
     fetchCurrentUser,
     logout,
     resetError,
+
+    updateUser,
   };
 }
