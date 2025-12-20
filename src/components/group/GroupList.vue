@@ -223,6 +223,11 @@ const filteredGroups = computed(() => {
           v-for="group in filteredGroups"
           :key="group.id"
           class="group relative flex cursor-pointer flex-col justify-between overflow-hidden rounded-2xl border border-gray-200 bg-white/90 p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-yellow-300 hover:shadow-md"
+          role="button"
+          tabindex="0"
+          @click="goGroup(group.id)"
+          @keydown.enter="goGroup(group.id)"
+          @keydown.space.prevent="goGroup(group.id)"
         >
           <!-- 상단 색띠 -->
           <div
@@ -244,6 +249,22 @@ const filteredGroups = computed(() => {
                 >
                   {{ group.name }}
                 </h2>
+
+                <svg
+                  class="h-4 w-4 flex-shrink-0 text-gray-300 group-hover:text-yellow-500 transition-colors"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M9 18l6-6-6-6"
+                  />
+                </svg>
               </div>
 
               <p class="mt-1 line-clamp-2 text-[11px] sm:text-xs text-gray-500">
@@ -285,33 +306,31 @@ const filteredGroups = computed(() => {
             </div>
 
             <div class="flex items-center gap-1">
-              <!-- 그룹 입장 -->
+              <!-- 그룹 수정 -->
               <button
+                v-if="canEditGroup(group)"
                 type="button"
-                class="px-3 py-1.5 text-xs font-semibold rounded-lg border border-yellow-400 bg-yellow-50 text-yellow-700 hover:bg-yellow-100 transition-colors"
-                @click="goGroup(group.id)"
+                class="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 bg-white text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-200"
+                @click.stop="goEditGroup(group.id)"
               >
-                그룹 들어가기
+                수정
               </button>
 
               <!-- 그룹 탈퇴 -->
               <button
                 type="button"
-                class="px-3 py-1.5 text-xs font-semibold rounded-lg border border-red-400 bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                :disabled="leavingGroupId === group.id"
-                @click="handleLeaveGroup(group.id)"
+                class="px-3 py-1.5 text-xs font-semibold rounded-lg border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-red-200"
+                :disabled="leavingGroupId === group.id || isOwner(group)"
+                :title="
+                  isOwner(group)
+                    ? '소유자는 바로 탈퇴할 수 없습니다. 그룹 수정에서 소유자 변경 후 탈퇴하세요.'
+                    : ''
+                "
+                @click.stop="handleLeaveGroup(group.id)"
               >
-                {{ leavingGroupId === group.id ? "탈퇴 중..." : "그룹 탈퇴" }}
-              </button>
-
-              <!-- 그룹 수정 -->
-              <button
-                v-if="canEditGroup(group)"
-                type="button"
-                class="px-3 py-1.5 text-xs font-medium border rounded-lg bg-white text-gray-700 hover:bg-gray-50"
-                @click.stop="goEditGroup(group.id)"
-              >
-                수정
+                <span v-if="leavingGroupId === group.id">탈퇴 중...</span>
+                <span v-else-if="isOwner(group)">탈퇴 불가</span>
+                <span v-else>그룹 탈퇴</span>
               </button>
             </div>
           </div>
