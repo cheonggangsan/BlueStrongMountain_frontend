@@ -25,6 +25,7 @@ import {
   mockForgotPassword,
   mockResetPassword,
   mockVerifyPassword,
+  mockFetchUserInfo,
   mockUpdateNickname,
   mockChangePassword,
   mockDeleteAccount,
@@ -126,14 +127,12 @@ export const authService = {
     return resetPasswordApi({ token, newPassword });
   },
 
-  // TODO: after mypage api integration
   /**
    * 비밀번호 재확인 (본인 인증)
    */
   async verifyPassword({ userId, password }) {
     if (USE_MOCK_AUTH) {
-      const res = await mockVerifyPassword({ password, userId });
-      return !!res?.ok;
+      return mockVerifyPassword({ userId, password });
     }
 
     return verifyPasswordApi({ userId, password }); // boolean
@@ -144,14 +143,8 @@ export const authService = {
    */
   async getUserInfo({ id }) {
     if (USE_MOCK_AUTH) {
-      const me = mockGetCurrentUser();
-      if (!me) return null;
-      return {
-        id: me.id,
-        email: me.email,
-        nickname: me.nickname,
-        baekjoonId: me.baekjoonId ?? "",
-      };
+      const u = await mockFetchUserInfo({ id });
+      return toFrontendUser(u);
     }
 
     const u = await fetchUserInfo({ id }); // { userId, username, baekjoonHandle, ... }
@@ -162,7 +155,7 @@ export const authService = {
    * 비밀번호 변경
    */
   async changePassword({ id, newPassword }) {
-    if (USE_MOCK_AUTH) return mockChangePassword({ newPassword });
+    if (USE_MOCK_AUTH) return mockChangePassword({ id, newPassword });
 
     return changePasswordApi({ id, password: newPassword });
   },
@@ -189,7 +182,7 @@ export const authService = {
    * 닉네임 변경
    */
   async updateNickname({ id, nickname }) {
-    if (USE_MOCK_AUTH) return mockUpdateNickname({ nickname });
+    if (USE_MOCK_AUTH) return mockUpdateNickname({ id, nickname });
 
     await changeUsername({ id, username: nickname });
     const u = await fetchUserInfo({ id });
@@ -200,7 +193,7 @@ export const authService = {
    * 회원 탈퇴
    */
   async deleteAccount({ id }) {
-    if (USE_MOCK_AUTH) return mockDeleteAccount();
+    if (USE_MOCK_AUTH) return mockDeleteAccount({ id });
     return deleteUser({ id });
   },
 };

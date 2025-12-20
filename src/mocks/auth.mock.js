@@ -344,7 +344,7 @@ export async function mockVerifyPassword({ userId, password }) {
   }
 
   const users = loadUsers();
-  const user = users.find((u) => u.id === current.id);
+  const user = users.find((u) => u.id === targetId);
 
   if (!user || user.password !== password) {
     const error = new Error("비밀번호가 올바르지 않습니다.");
