@@ -59,6 +59,15 @@ function findButton(item, label) {
   return item.findAll("button").find((btn) => btn.text().includes(label));
 }
 
+async function openActionMenu(item) {
+  const menuBtn = item.find('button[aria-label="그룹 액션 메뉴"]');
+  expect(menuBtn.exists(), "⋯(액션 메뉴) 버튼을 찾지 못했습니다").toBe(true);
+
+  await menuBtn.trigger("click");
+  await flushPromises();
+  await nextTick();
+}
+
 describe("GroupList.vue", () => {
   beforeEach(() => {
     // 유저(1)가 owner / manager / member 인 그룹 + 완전 관계없는 그룹
@@ -121,7 +130,7 @@ describe("GroupList.vue", () => {
     expect(text).toContain("내가 member만인 그룹");
   });
 
-  it("OWNER/MANAGER 그룹에는 '수정' 버튼이 보이고, MEMBER 그룹에는 보이지 않는다 (groupRole 기준)", async () => {
+  it("OWNER/MANAGER 그룹에는 '수정' 메뉴가 보이고, MEMBER 그룹에는 보이지 않는다 (groupRole 기준)", async () => {
     const wrapper = mount(GroupList);
     await flushPromises();
     await nextTick();
@@ -130,12 +139,17 @@ describe("GroupList.vue", () => {
     const managerItem = findGroupItemByName(wrapper, "내가 manager인 그룹");
     const memberItem = findGroupItemByName(wrapper, "내가 member만인 그룹");
 
-    expect(ownerItem, "owner 그룹 li를 찾지 못했습니다").toBeTruthy();
-    expect(managerItem, "manager 그룹 li를 찾지 못했습니다").toBeTruthy();
-    expect(memberItem, "member 그룹 li를 찾지 못했습니다").toBeTruthy();
+    expect(ownerItem).toBeTruthy();
+    expect(managerItem).toBeTruthy();
+    expect(memberItem).toBeTruthy();
 
+    await openActionMenu(ownerItem);
     expect(hasButton(ownerItem, "수정")).toBe(true);
+
+    await openActionMenu(managerItem);
     expect(hasButton(managerItem, "수정")).toBe(true);
+
+    await openActionMenu(memberItem);
     expect(hasButton(memberItem, "수정")).toBe(false);
   });
 
@@ -147,8 +161,10 @@ describe("GroupList.vue", () => {
     const managerItem = findGroupItemByName(wrapper, "내가 manager인 그룹");
     expect(managerItem).toBeTruthy();
 
+    await openActionMenu(managerItem);
+
     const editBtn = findButton(managerItem, "수정");
-    expect(editBtn, "'수정' 버튼을 찾지 못했습니다").toBeTruthy();
+    expect(editBtn, "'수정' 메뉴를 찾지 못했습니다").toBeTruthy();
 
     await editBtn.trigger("click");
     await flushPromises();
@@ -161,7 +177,7 @@ describe("GroupList.vue", () => {
     });
   });
 
-  it("OWNER는 '그룹 탈퇴' 클릭 시 차단되고 leaveGroup이 호출되지 않는다", async () => {
+  it("OWNER는 '탈퇴 불가'로 표시되고 leaveGroup이 호출되지 않는다", async () => {
     const confirmSpy = vi.spyOn(window, "confirm");
     const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => {});
 
@@ -172,15 +188,16 @@ describe("GroupList.vue", () => {
     const ownerItem = findGroupItemByName(wrapper, "내가 owner인 그룹");
     expect(ownerItem).toBeTruthy();
 
-    const leaveBtn = findButton(ownerItem, "그룹 탈퇴");
-    expect(leaveBtn, "'그룹 탈퇴' 버튼을 찾지 못했습니다").toBeTruthy();
+    await openActionMenu(ownerItem);
 
-    await leaveBtn.trigger("click");
-    await flushPromises();
-    await nextTick();
+    const leaveBtn = findButton(ownerItem, "탈퇴 불가");
+    expect(leaveBtn, "'탈퇴 불가' 버튼을 찾지 못했습니다").toBeTruthy();
 
-    expect(alertSpy).toHaveBeenCalled(); // 차단 안내
-    expect(confirmSpy).not.toHaveBeenCalled(); // confirm까지 가지 않음
+    // disabled라서 클릭 자체가 안 되는 게 정상
+    expect(leaveBtn.element.disabled).toBe(true);
+
+    expect(confirmSpy).not.toHaveBeenCalled();
+    expect(alertSpy).not.toHaveBeenCalled();
     expect(leaveGroupMock).not.toHaveBeenCalled();
 
     confirmSpy.mockRestore();
@@ -198,16 +215,48 @@ describe("GroupList.vue", () => {
     const memberItem = findGroupItemByName(wrapper, "내가 member만인 그룹");
     expect(memberItem).toBeTruthy();
 
+    await openActionMenu(memberItem);
+
     const leaveBtn = findButton(memberItem, "그룹 탈퇴");
-    expect(leaveBtn, "'그룹 탈퇴' 버튼을 찾지 못했습니다").toBeTruthy();
+    expect(leaveBtn, "'그룹 탈퇴' 메뉴를 찾지 못했습니다").toBeTruthy();
 
     await leaveBtn.trigger("click");
     await flushPromises();
     await nextTick();
 
+    expect(confirmSpy).toHaveBeenCalled();
     expect(leaveGroupMock).toHaveBeenCalledWith(3, { requesterId: 1 });
 
     confirmSpy.mockRestore();
     alertSpy.mockRestore();
+  });
+
+  it("그룹 카드를 클릭하면 BoardList로 이동한다", async () => {
+    const wrapper = mount(GroupList);
+    await flushPromises();
+    await nextTick();
+
+    const item = findGroupItemByName(wrapper, "내가 member만인 그룹");
+    expect(item).toBeTruthy();
+
+    await item.trigger("click");
+    expect(pushMock).toHaveBeenCalledWith({
+      name: "BoardList",
+      params: { groupId: 3 },
+    });
+  });
+
+  it("액션 메뉴 버튼 클릭 시 BoardList로 이동하지 않는다", async () => {
+    const wrapper = mount(GroupList);
+    await flushPromises();
+    await nextTick();
+
+    const item = findGroupItemByName(wrapper, "내가 member만인 그룹");
+    const menuBtn = item.find('button[aria-label="그룹 액션 메뉴"]');
+
+    await menuBtn.trigger("click");
+    await flushPromises();
+
+    expect(pushMock).not.toHaveBeenCalled();
   });
 });
