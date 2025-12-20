@@ -33,6 +33,8 @@ import {
   mockCheckBaekjoonId,
 } from "@/mocks/auth.mock";
 
+import { USER_STORAGE_KEY } from "../constants/auth";
+
 const USE_MOCK_AUTH = apiMode.auth === "mock";
 
 function toFrontendUser(u) {
@@ -46,8 +48,6 @@ function toFrontendUser(u) {
     updatedAt: u.updatedAt,
   };
 }
-
-const USER_STORAGE_KEY = "bsm_user";
 
 export const authService = {
   /**

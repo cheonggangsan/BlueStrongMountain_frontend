@@ -1,8 +1,6 @@
 import { reactive, computed, readonly } from "vue";
 import { authService } from "@/services/authService";
-
-const USER_STORAGE_KEY = "bsm_user";
-const LOGOUT_EVENT = "bsm:auth:logout";
+import { USER_STORAGE_KEY, LOGOUT_EVENT } from "../constants/auth";
 
 const state = reactive({
   user: null, // { id, email, nickname, ... }

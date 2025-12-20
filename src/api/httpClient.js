@@ -1,4 +1,9 @@
 import axios from "axios";
+import {
+  TOKEN_STORAGE_KEY,
+  USER_STORAGE_KEY,
+  LOGOUT_EVENT,
+} from "../constants/auth";
 
 // .env에 VITE_API_BASE_URL 설정해두면 거기를 기본으로 사용
 // 예: VITE_API_BASE_URL=http://localhost:8080/api
@@ -9,10 +14,6 @@ const httpClient = axios.create({
     "Content-Type": "application/json",
   },
 });
-
-const TOKEN_STORAGE_KEY = "bsm_access_token";
-const USER_STORAGE_KEY = "bsm_user";
-const LOGOUT_EVENT = "bsm:auth:logout";
 
 // ===== JWT 전환 대비용: accessToken 관리 =====
 let accessToken = null;
