@@ -1,6 +1,9 @@
 import { reactive, computed, readonly } from "vue";
 import { authService } from "@/services/authService";
 
+const USER_STORAGE_KEY = "bsm_user";
+const LOGOUT_EVENT = "bsm:auth:logout";
+
 const state = reactive({
   user: null, // { id, email, nickname, ... }
   isLoading: false, // 로그인/로그아웃 버튼 로딩
@@ -9,17 +12,44 @@ const state = reactive({
   error: null,
 });
 
+function saveUserToStorage(user) {
+  if (typeof window === "undefined") return;
+  try {
+    if (user)
+      window.localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+  } catch (e) {
+    console.warn("[authStore] saveUserToStorage failed:", e);
+  }
+}
+
+function clearUserFromStorage() {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(USER_STORAGE_KEY);
+}
+
 function setUser(user) {
-  state.user = user;
+  state.user = user ?? null;
+
+  if (state.user) saveUserToStorage(state.user);
+  else clearUserFromStorage();
 }
 
 function clearUser() {
   state.user = null;
+  clearUserFromStorage();
 }
 
 function updateUser(patch) {
   if (!state.user) return;
   state.user = { ...state.user, ...patch };
+  saveUserToStorage(state.user);
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener(LOGOUT_EVENT, () => {
+    clearUser();
+    state.initialized = true; // 이후 guard에서 재시도 무한루프 방지
+  });
 }
 
 /**
@@ -33,6 +63,9 @@ async function login(credentials) {
   try {
     const user = await authService.login(credentials);
     setUser(user);
+
+    state.initialized = true;
+
     return user;
   } catch (err) {
     const message =
@@ -60,7 +93,8 @@ async function fetchCurrentUser({ force = false } = {}) {
 
   try {
     const user = await authService.fetchCurrentUser();
-    setUser(user);
+    if (user) setUser(user);
+    else clearUser();
   } catch (err) {
     console.error("[authStore] fetchCurrentUser error:", err);
     clearUser();
@@ -83,6 +117,7 @@ async function logout() {
     console.error("[authStore] logout error:", err);
   } finally {
     clearUser();
+    state.initialized = true;
     state.isLoading = false;
   }
 }
