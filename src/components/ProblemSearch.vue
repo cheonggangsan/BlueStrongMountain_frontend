@@ -21,16 +21,6 @@ const loading = ref(false);
 const error = ref("");
 const results = ref([]);
 
-// 배열에서 랜덤으로 최대 count개 추출
-function getRandomSubset(arr, count) {
-  const copy = [...arr];
-  for (let i = copy.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [copy[i], copy[j]] = [copy[j], copy[i]];
-  }
-  return copy.slice(0, count);
-}
-
 // 🔍 필터 컴포넌트에서 'search' 이벤트를 받았을 때 실행
 async function handleFiltersSearch(filter) {
   loading.value = true;
@@ -73,8 +63,19 @@ async function handleFiltersSearch(filter) {
       // UI 날짜 필터 (service가 updatedAt->registeredAt 정규화 후 필터까지 처리)
       registeredBefore: filter.registeredBefore || undefined,
 
-      // 확장용 (현재 서버 미지원이어도 payload로 넘겨도 무방)
+      // swagger option: 0 전체 / 1 랜덤5 / 2 AI추천
+      option:
+        filter.mode === "review"
+          ? 0
+          : filter.aiRecommend
+            ? 2
+            : filter.randomMode
+              ? 1
+              : 0,
+
+      // 호환/확장용(서비스가 option 유도할 수도 있어서 같이 넘겨둠)
       aiRecommend: !!filter.aiRecommend,
+      randomMode: !!filter.randomMode,
     };
 
     let baseResults = await problemService.filterProblems(payload);
@@ -99,11 +100,8 @@ async function handleFiltersSearch(filter) {
         });
       }
     } else {
-      if (filter.aiRecommend) {
-        // AI 추천: 서버 순서 그대로 (추후 서버가 지원하면 그대로 UX 유지)
-      } else if (filter.randomMode) {
-        const count = Math.min(5, baseResults.length);
-        baseResults = count > 0 ? getRandomSubset(baseResults, count) : [];
+      if (filter.aiRecommend || filter.randomMode) {
+        // option=2(AI) / option=1(랜덤5): 서버 순서 그대로
       } else {
         // 기본 정렬: reviewCount(낮은 순) -> registeredAt(오래된 순)
         baseResults.sort((a, b) => {

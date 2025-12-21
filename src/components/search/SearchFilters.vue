@@ -1,6 +1,6 @@
 <!-- src/component/search/SearchFilters.vue -->
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from "vue";
+import { ref, computed, watch, onMounted, onUnmounted } from "vue";
 import { tags } from "/src/data/tags";
 import { difficultyOptions } from "/src/data/difficultyOptions";
 
@@ -58,6 +58,21 @@ const unsolvedOnly = ref(false);
 
 // AI 추천 모드
 const aiRecommend = ref(false);
+
+watch(randomMode, (v) => {
+  if (v) aiRecommend.value = false;
+});
+
+watch(aiRecommend, (v) => {
+  if (v) randomMode.value = false;
+});
+
+watch(mode, (m) => {
+  if (m === "review") {
+    randomMode.value = false;
+    aiRecommend.value = false;
+  }
+});
 
 // 조건 접기 / 펼치기
 const isFilterCollapsed = ref(false);
@@ -554,7 +569,10 @@ function emitReset() {
       <div
         class="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-gray-200"
       >
-        <div class="flex gap-2">
+        <div
+          v-if="mode !== 'review'"
+          class="flex gap-2"
+        >
           <!-- 랜덤 5개 토글 -->
           <button
             type="button"
@@ -588,12 +606,7 @@ function emitReset() {
                 ? 'border-indigo-400 text-indigo-600'
                 : 'border-gray-300 text-gray-500'
             "
-            @click="
-              aiRecommend = !aiRecommend;
-              if (aiRecommend) {
-                randomMode = false;
-              }
-            "
+            @click="aiRecommend = !aiRecommend"
           >
             <span class="relative inline-flex items-center">
               <span
@@ -610,7 +623,7 @@ function emitReset() {
         </div>
 
         <!-- 검색 / 초기화 -->
-        <div class="flex gap-2">
+        <div class="flex gap-2 ml-auto">
           <button
             type="button"
             class="px-3 py-2 rounded-lg text-xs font-semibold border border-gray-300 text-gray-600 bg-white hover:bg-gray-50"

@@ -33,6 +33,7 @@ export async function searchByNumber(problemNo) {
  *   tags?: string[],
  *   minSolvers?: number,
  *   unsolved?: boolean
+ *   option?: 0 | 1 | 2
  * }} params
  * @returns {Promise<Array>} problems
  */
@@ -45,6 +46,7 @@ export async function filterProblems({
   tags,
   minSolvers,
   unsolved,
+  option,
 } = {}) {
   if (!groupId) {
     throw new Error(
@@ -61,6 +63,7 @@ export async function filterProblems({
     unsolved,
     problemIds,
     tags,
+    option,
   };
 
   // explode=true: ?tags=a&tags=b&problemIds=1&problemIds=2
