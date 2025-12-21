@@ -230,4 +230,38 @@ describe("ProblemSearch.vue", () => {
     // registeredAt 최신(큰 날짜)이 먼저
     expect(firstId).toBe("20");
   });
+
+  it("randomMode가 true일 때 option: 1을 전달한다", async () => {
+    const spy = vi
+      .spyOn(problemService, "filterProblems")
+      .mockResolvedValue([]);
+
+    const wrapper = mountSubject({ groupId: 1 });
+    emitSearch(wrapper, { mode: "general", randomMode: true });
+    await flushPromises();
+
+    expect(spy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        option: 1,
+        randomMode: true,
+      }),
+    );
+  });
+
+  it("aiRecommend가 true일 때 option: 2를 전달한다", async () => {
+    const spy = vi
+      .spyOn(problemService, "filterProblems")
+      .mockResolvedValue([]);
+
+    const wrapper = mountSubject({ groupId: 1 });
+    emitSearch(wrapper, { mode: "general", aiRecommend: true });
+    await flushPromises();
+
+    expect(spy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        option: 2,
+        aiRecommend: true,
+      }),
+    );
+  });
 });
