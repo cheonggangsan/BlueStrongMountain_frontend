@@ -87,6 +87,7 @@ describe("ProblemSearch.vue", () => {
         groupId: 1,
         mode: "general",
         problemIds: [123],
+        option: 0,
       }),
     );
 
