@@ -87,6 +87,20 @@ function normalizeProblem(p) {
   };
 }
 
+function normalizeOption(v) {
+  const n = typeof v === "string" ? Number(v) : v;
+  return Number.isInteger(n) && [0, 1, 2].includes(n) ? n : undefined;
+}
+
+function getRandomSubset(arr, count) {
+  const copy = [...arr];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy.slice(0, count);
+}
+
 export const problemService = {
   /**
    * 문제 번호로 검색 (mock/real 공통 인터페이스)
@@ -136,7 +150,9 @@ export const problemService = {
 
       registeredBefore, // YYYY-MM-DD (클라 후처리)
       beforeDate, // 호환
-      aiRecommend, // 현재 미사용(확장용)
+      aiRecommend, // option=2로 매핑 가능
+      randomMode, // option=1로 매핑 가능
+      option, // 0|1|2 (swagger)
     } = params;
 
     const normalizedMode = mode === "review" ? "review" : "normal"; // general/undefined -> normal
@@ -168,11 +184,19 @@ export const problemService = {
           ? !unsolvedOnly
           : undefined;
 
+    const explicitOption = normalizeOption(option);
+    const derivedOption =
+      normalizedMode === "review" ? 0 : aiRecommend ? 2 : randomMode ? 1 : 0;
+
+    const mergedOption = explicitOption ?? derivedOption;
+
     if (USE_MOCK_PROBLEM) {
       const mockUnsolvedOnly =
         normalizedMode === "normal" && typeof mergedUnsolved === "boolean"
           ? !mergedUnsolved
           : undefined;
+
+      const mockAiRecommend = mergedOption === 2;
 
       // mock은 기존 로직 재활용
       let base = await mockSearchWithConditions({
@@ -182,7 +206,7 @@ export const problemService = {
         minSolved: mergedMinSolvers,
         beforeDate: registeredBefore ?? beforeDate,
         unsolvedOnly: mockUnsolvedOnly, // boolean
-        aiRecommend: !!aiRecommend,
+        aiRecommend: mockAiRecommend,
       });
 
       // tags 후처리 (mockSearchWithConditions는 tag string 기반이라)
@@ -198,6 +222,12 @@ export const problemService = {
       if (Array.isArray(problemIds) && problemIds.length > 0) {
         const set = new Set(problemIds.map(Number));
         base = base.filter((p) => set.has(Number(p.id)));
+      }
+
+      // option=1: 랜덤 5문제 반환 (중복 없음)
+      if (normalizedMode === "normal" && mergedOption === 1) {
+        const count = Math.min(5, base.length);
+        base = count > 0 ? getRandomSubset(base, count) : [];
       }
 
       return base;
@@ -218,6 +248,7 @@ export const problemService = {
       tags: mergedTags,
       minSolvers: mergedMinSolvers,
       unsolved: mergedUnsolved,
+      option: mergedOption,
     });
 
     const normalized = Array.isArray(rawList)
