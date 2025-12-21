@@ -569,7 +569,10 @@ function emitReset() {
       <div
         class="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-gray-200"
       >
-        <div class="flex gap-2">
+        <div
+          v-if="mode !== 'review'"
+          class="flex gap-2"
+        >
           <!-- 랜덤 5개 토글 -->
           <button
             type="button"
@@ -620,7 +623,7 @@ function emitReset() {
         </div>
 
         <!-- 검색 / 초기화 -->
-        <div class="flex gap-2">
+        <div class="flex gap-2 ml-auto">
           <button
             type="button"
             class="px-3 py-2 rounded-lg text-xs font-semibold border border-gray-300 text-gray-600 bg-white hover:bg-gray-50"
