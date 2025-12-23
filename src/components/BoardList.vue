@@ -52,8 +52,6 @@ const searchedBoards = computed(() => {
 const isExpired = (deadline) => {
   if (!deadline) return false; // 마감일 없으면 계속 진행 중
   const today = new Date();
-  // 시간을 00:00:00으로 맞춰 날짜만 비교
-  today.setHours(0, 0, 0, 0);
   return new Date(deadline) < today;
 };
 
