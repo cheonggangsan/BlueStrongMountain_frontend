@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed } from "vue";
+import { RecycleScroller } from "vue-virtual-scroller";
 import SearchFilters from "./search/SearchFilters.vue";
 import { problemService } from "@/services/problemService";
 
@@ -137,12 +138,11 @@ function handleFiltersReset() {
 }
 
 // 이미 선택된 문제는 검색 결과에서 숨기기
+const selectedIdSet = computed(() => new Set(props.selectedProblemIds ?? []));
+
 const visibleResults = computed(() => {
-  if (!props.selectedProblemIds || props.selectedProblemIds.length === 0) {
-    return results.value;
-  }
-  const selectedIdSet = new Set(props.selectedProblemIds);
-  return results.value.filter((p) => !selectedIdSet.has(p.id));
+  if (!props.selectedProblemIds?.length) return results.value;
+  return results.value.filter((p) => !selectedIdSet.value.has(p.id));
 });
 
 // 결과 카드 클릭 → 부모로 add-problem 이벤트
@@ -164,52 +164,60 @@ function onClickProblem(problem) {
 
     <!-- 결과 리스트 -->
     <div class="search-results mt-1">
-      <div
-        v-for="problem in visibleResults"
-        :key="problem.id"
-        class="problem-card"
-        @click="onClickProblem(problem)"
+      <RecycleScroller
+        v-if="!loading && visibleResults.length > 0"
+        v-slot="{ item: problem }"
+        class="h-[39vh] overflow-auto"
+        :items="visibleResults"
+        key-field="id"
+        :item-size="75"
+        :buffer="600"
       >
-        <div class="problem-card-header">
-          <div class="problem-card-title">
-            {{ problem.title }}
-          </div>
+        <div
+          class="problem-card"
+          @click="onClickProblem(problem)"
+        >
+          <div class="problem-card-header">
+            <div class="problem-card-title">
+              {{ problem.title }}
+            </div>
 
-          <div class="problem-card-actions">
-            <span class="problem-card-id"> ID: {{ problem.id }} </span>
+            <div class="problem-card-actions">
+              <span class="problem-card-id"> ID: {{ problem.id }} </span>
 
-            <a
-              :href="`https://www.acmicpc.net/problem/${problem.id}`"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="problem-card-link"
-              @click.stop
-            >
-              백준 열기 ↗
-            </a>
-          </div>
+              <a
+                :href="`https://www.acmicpc.net/problem/${problem.id}`"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="problem-card-link"
+                @click.stop
+              >
+                백준 열기 ↗
+              </a>
+            </div>
 
-          <div class="problem-card-meta">
-            <span
-              class="px-2 py-[2px] rounded-full bg-yellow-100 text-yellow-700 text-[11px] font-semibold"
-            >
-              {{ problem.difficulty }}
-            </span>
-            <span class="text-[11px]">
-              해결자 수: {{ problem.acceptedUserCount.toLocaleString() }}
-            </span>
-            <span
-              v-if="
-                problem.reviewCount !== undefined &&
-                problem.reviewCount !== null
-              "
-              class="text-[11px] text-blue-600"
-            >
-              복습 횟수: {{ problem.reviewCount }}
-            </span>
+            <div class="problem-card-meta">
+              <span
+                class="px-2 py-[2px] rounded-full bg-yellow-100 text-yellow-700 text-[11px] font-semibold"
+              >
+                {{ problem.difficulty }}
+              </span>
+              <span class="text-[11px]">
+                해결자 수: {{ problem.acceptedUserCount.toLocaleString() }}
+              </span>
+              <span
+                v-if="
+                  problem.reviewCount !== undefined &&
+                  problem.reviewCount !== null
+                "
+                class="text-[11px] text-blue-600"
+              >
+                복습 횟수: {{ problem.reviewCount }}
+              </span>
+            </div>
           </div>
         </div>
-      </div>
+      </RecycleScroller>
 
       <p
         v-if="!loading && !error && visibleResults.length === 0"
