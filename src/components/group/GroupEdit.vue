@@ -199,6 +199,9 @@ async function handleChangeOwner() {
     }
 
     ownerChangeMessage.value = "소유자가 변경되었습니다.";
+    setTimeout(() => {
+      router.push({ name: "GroupList" });
+    }, 700);
   } catch (e) {
     console.error(e);
     ownerChangeError.value =
