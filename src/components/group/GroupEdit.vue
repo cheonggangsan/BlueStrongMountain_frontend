@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, onBeforeUnmount } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import GroupForm from "./GroupForm.vue";
 import {
@@ -41,6 +41,7 @@ const ownerCandidateId = ref(null);
 const ownerChangeLoading = ref(false);
 const ownerChangeError = ref("");
 const ownerChangeMessage = ref("");
+const ownerChangeTimerId = ref(null);
 
 const currentUserId = computed(() => authStore.user.value?.id ?? null);
 
@@ -122,6 +123,12 @@ onMounted(async () => {
   }
 });
 
+onBeforeUnmount(() => {
+  if (ownerChangeTimerId.value !== null) {
+    clearTimeout(ownerChangeTimerId.value);
+  }
+});
+
 async function handleSubmit(payload) {
   if (submitting.value) return;
 
@@ -154,6 +161,12 @@ function handleCancel() {
 }
 
 async function handleChangeOwner() {
+  // 기존 타이머가 있다면 취소
+  if (ownerChangeTimerId.value !== null) {
+    clearTimeout(ownerChangeTimerId.value);
+    ownerChangeTimerId.value = null;
+  }
+
   ownerChangeError.value = "";
   ownerChangeMessage.value = "";
 
@@ -199,6 +212,9 @@ async function handleChangeOwner() {
     }
 
     ownerChangeMessage.value = "소유자가 변경되었습니다.";
+    ownerChangeTimerId.value = setTimeout(() => {
+      router.push({ name: "GroupList" });
+    }, 700);
   } catch (e) {
     console.error(e);
     ownerChangeError.value =

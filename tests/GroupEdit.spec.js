@@ -1,5 +1,5 @@
 import { mount, flushPromises } from "@vue/test-utils";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import GroupEdit from "../src/components/group/GroupEdit.vue";
 
 // ===== 1) authStore mock =====
@@ -115,6 +115,10 @@ describe("GroupEdit.vue", () => {
     fetchGroupUsers.mockResolvedValue([]);
     routerMock.push.mockReset();
     routerMock.back.mockReset();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("마운트 시 fetchGroupById 로 그룹 정보를 불러와 initialGroup 으로 전달한다", async () => {
@@ -472,5 +476,108 @@ describe("GroupEdit.vue", () => {
 
     expect(wrapper.text()).toContain("이미 이 멤버가 소유자입니다.");
     expect(changeGroupOwner).not.toHaveBeenCalled();
+  });
+
+  it("새 소유자를 선택하고 '소유자 변경 확정'을 누르면 changeGroupOwner가 호출되고 성공 메시지가 보이며 700ms 후 GroupList로 이동한다", async () => {
+    vi.useFakeTimers();
+
+    fetchGroupById.mockResolvedValue({
+      id: 1,
+      name: "수정용 스터디",
+      description: "",
+      visibility: "PUBLIC",
+      ownerId: 1,
+      managerIds: [1],
+      memberIds: [1, 2],
+    });
+
+    changeGroupOwner.mockResolvedValue({
+      id: 1,
+      name: "수정용 스터디",
+      description: "",
+      visibility: "PUBLIC",
+      ownerId: 2,
+      managerIds: [1],
+      memberIds: [1, 2],
+    });
+
+    const wrapper = mount(GroupEdit);
+    await flushPromises();
+
+    const ownerTab = wrapper
+      .findAll("button")
+      .find((b) => b.text().includes("소유자 변경"));
+    await ownerTab.trigger("click");
+    await flushPromises();
+
+    const candidateItem = wrapper
+      .findAll("li")
+      .find((li) => li.text().includes("새소유자"));
+    await candidateItem.trigger("click");
+
+    const confirmBtn = wrapper
+      .findAll("button")
+      .find((b) => b.text().includes("소유자 변경 확정"));
+    await confirmBtn.trigger("click");
+    await flushPromises();
+
+    expect(changeGroupOwner).toHaveBeenCalledWith("1", {
+      requesterId: 1,
+      newOwnerId: 2,
+    });
+
+    expect(wrapper.text()).toContain("소유자가 변경되었습니다.");
+    expect(wrapper.text()).toContain("새소유자");
+
+    expect(routerMock.push).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(699);
+    expect(routerMock.push).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(1);
+    expect(routerMock.push).toHaveBeenCalledTimes(1);
+    expect(routerMock.push).toHaveBeenCalledWith({ name: "GroupList" });
+  });
+
+  it("소유자 변경 실패 시 에러 메시지를 보여주고 700ms가 지나도 GroupList로 이동하지 않는다", async () => {
+    vi.useFakeTimers();
+
+    fetchGroupById.mockResolvedValue({
+      id: 1,
+      name: "수정용 스터디",
+      description: "",
+      visibility: "PUBLIC",
+      ownerId: 1,
+      managerIds: [1],
+      memberIds: [1, 2],
+    });
+
+    changeGroupOwner.mockRejectedValue(new Error("서버 오류"));
+
+    const wrapper = mount(GroupEdit);
+    await flushPromises();
+
+    const ownerTab = wrapper
+      .findAll("button")
+      .find((b) => b.text().includes("소유자 변경"));
+    await ownerTab.trigger("click");
+    await flushPromises();
+
+    const candidateItem = wrapper
+      .findAll("li")
+      .find((li) => li.text().includes("새소유자"));
+    await candidateItem.trigger("click");
+
+    const confirmBtn = wrapper
+      .findAll("button")
+      .find((b) => b.text().includes("소유자 변경 확정"));
+    await confirmBtn.trigger("click");
+    await flushPromises();
+
+    expect(wrapper.text()).toContain("소유자 변경 중 오류가 발생했습니다.");
+    expect(routerMock.push).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(700);
+    expect(routerMock.push).not.toHaveBeenCalled();
   });
 });
