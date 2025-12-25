@@ -123,7 +123,7 @@ onMounted(async () => {
   }
 });
 
-+onBeforeUnmount(() => {
+onBeforeUnmount(() => {
   if (ownerChangeTimerId.value !== null) {
     clearTimeout(ownerChangeTimerId.value);
   }
