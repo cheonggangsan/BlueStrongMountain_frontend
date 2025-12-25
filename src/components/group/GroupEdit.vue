@@ -161,6 +161,12 @@ function handleCancel() {
 }
 
 async function handleChangeOwner() {
+  // 기존 타이머가 있다면 취소
+  if (ownerChangeTimerId.value !== null) {
+    clearTimeout(ownerChangeTimerId.value);
+    ownerChangeTimerId.value = null;
+  }
+
   ownerChangeError.value = "";
   ownerChangeMessage.value = "";
 
