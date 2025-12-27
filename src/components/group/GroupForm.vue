@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from "vue";
 import { searchMembers, members } from "../../data/memberStore";
+import { useAuthStore } from "../../data/authStore";
 
 const props = defineProps({
   // "create" | "edit"
@@ -53,6 +54,10 @@ const selectedMembers = ref([]);
 // 로컬 에러 (유효성)
 const formError = ref("");
 
+// 그룹 생성자 정보
+const auth = useAuthStore();
+const ownerId = computed(() => Number(auth.user.value?.id));
+
 // ----- 초기값 세팅 (수정 모드일 때) -----
 function syncFromInitialGroup() {
   title.value = props.initialGroup.title || "";
@@ -94,7 +99,10 @@ async function handleSearchMembers() {
 
   try {
     const results = await searchMembers(memberSearch.value);
-    searchResults.value = results;
+    const oid = ownerId.value;
+    searchResults.value = Number.isFinite(oid)
+      ? results.filter((u) => Number(u.id) !== oid)
+      : results;
   } catch (e) {
     console.error(e);
     formError.value = "멤버 검색 중 오류가 발생했습니다.";
