@@ -119,7 +119,7 @@ function isManager(group) {
 }
 
 function canEditGroup(group) {
-  return isOwner(group) || isManager(group);
+  return isOwner(group);
 }
 
 function goGroup(groupId) {
