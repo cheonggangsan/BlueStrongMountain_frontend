@@ -169,6 +169,35 @@ describe("GroupForm.vue", () => {
     expect(searchBox.text()).not.toContain("@algoLee");
   });
 
+  it("owner 정보가 아직 없을 때(auth.user.value=null)는 필터링 없이 검색 결과를 그대로 표시한다", async () => {
+    // 현실적인 초기 상태: 로그인 정보 로딩 전
+    authUser.value = null;
+
+    searchMembers.mockResolvedValue([
+      { id: 2, name: "이알고", nickname: "algoLee" },
+      { id: 3, name: "달피곰", nickname: "baekjoonPark" },
+    ]);
+
+    const wrapper = mount(GroupForm, { props: { mode: "create" } });
+
+    await wrapper
+      .find('input[placeholder="이름 또는 닉네임으로 검색"]')
+      .setValue("알고");
+    const searchButton = findButtonByText(wrapper, "검색");
+    await searchButton.trigger("click");
+    await flushPromises();
+
+    const searchBox = wrapper.findAll("div.border.rounded-xl")[0];
+    const resultItems = searchBox.findAll("li");
+
+    // ownerId가 유효하지 않으므로(=NaN) 필터링 없이 모든 결과 표시
+    expect(resultItems.length).toBe(2);
+    expect(searchBox.text()).toContain("이알고");
+    expect(searchBox.text()).toContain("@algoLee");
+    expect(searchBox.text()).toContain("달피곰");
+    expect(searchBox.text()).toContain("@baekjoonPark");
+  });
+
   it("멤버 검색 결과에서 클릭 시 선택됨/추가 상태와 오른쪽 선택된 멤버 영역이 동기화된다", async () => {
     // 검색 결과 mock (한 명만)
     searchMembers.mockResolvedValue([
