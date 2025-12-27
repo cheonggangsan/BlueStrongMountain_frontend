@@ -73,7 +73,7 @@ const routes = [
     name: "GroupEdit",
     component: GroupEdit,
     props: true,
-    meta: { requiresAuth: true, requiresGroupManager: true },
+    meta: { requiresAuth: true, requiresGroupOwner: true },
   },
   {
     path: "/groups/:groupId/boards",
@@ -140,10 +140,11 @@ router.beforeEach(async (to, from, next) => {
   // 4) 그룹 관련 권한 체크
   const needGroupMember = to.meta.requiresGroupMember;
   const needGroupManager = to.meta.requiresGroupManager;
+  const needGroupOwner = to.meta.requiresGroupOwner;
   const groupIdParam = to.params.groupId;
 
-  // groupId가 있고, 멤버/매니저 권한 둘 중 하나라도 필요한 경우에만 검사
-  if (groupIdParam && (needGroupMember || needGroupManager)) {
+  // groupId가 있고, 멤버/매니저/소유자 권한 둘 중 하나라도 필요한 경우에만 검사
+  if (groupIdParam && (needGroupMember || needGroupManager || needGroupOwner)) {
     const groupId = Number(groupIdParam);
 
     if (!Number.isFinite(groupId)) {
@@ -202,7 +203,13 @@ router.beforeEach(async (to, from, next) => {
       return next({ name: "GroupList" });
     }
 
-    // 4-2) owner/manager만 접근 가능한 페이지 (GroupEdit, BoardCreate/Edit)
+    // 4-1.5) owner만 접근 가능한 페이지 (GroupEdit 등)
+    if (needGroupOwner && !isOwner) {
+      window.alert("이 그룹의 소유자만 접근할 수 있습니다.");
+      return next({ name: "GroupList" });
+    }
+
+    // 4-2) owner/manager만 접근 가능한 페이지 (BoardCreate/Edit)
     if (needGroupManager && !(isOwner || isManager)) {
       window.alert("이 그룹의 관리자 또는 소유자만 접근할 수 있습니다.");
 
