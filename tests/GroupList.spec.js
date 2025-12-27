@@ -130,7 +130,7 @@ describe("GroupList.vue", () => {
     expect(text).toContain("내가 member만인 그룹");
   });
 
-  it("OWNER/MANAGER 그룹에는 '수정' 메뉴가 보이고, MEMBER 그룹에는 보이지 않는다 (groupRole 기준)", async () => {
+  it("OWNER 그룹에는 '수정' 메뉴가 보이고, MANAGER/MEMBER 그룹에는 보이지 않는다 (groupRole 기준)", async () => {
     const wrapper = mount(GroupList);
     await flushPromises();
     await nextTick();
@@ -147,23 +147,23 @@ describe("GroupList.vue", () => {
     expect(hasButton(ownerItem, "수정")).toBe(true);
 
     await openActionMenu(managerItem);
-    expect(hasButton(managerItem, "수정")).toBe(true);
+    expect(hasButton(managerItem, "수정")).toBe(false);
 
     await openActionMenu(memberItem);
     expect(hasButton(memberItem, "수정")).toBe(false);
   });
 
-  it("MANAGER가 '수정' 클릭 시 GroupEdit로 이동한다", async () => {
+  it("OWNER가 '수정' 클릭 시 GroupEdit로 이동한다", async () => {
     const wrapper = mount(GroupList);
     await flushPromises();
     await nextTick();
 
-    const managerItem = findGroupItemByName(wrapper, "내가 manager인 그룹");
-    expect(managerItem).toBeTruthy();
+    const ownerItem = findGroupItemByName(wrapper, "내가 owner인 그룹");
+    expect(ownerItem).toBeTruthy();
 
-    await openActionMenu(managerItem);
+    await openActionMenu(ownerItem);
 
-    const editBtn = findButton(managerItem, "수정");
+    const editBtn = findButton(ownerItem, "수정");
     expect(editBtn, "'수정' 메뉴를 찾지 못했습니다").toBeTruthy();
 
     await editBtn.trigger("click");
@@ -173,8 +173,22 @@ describe("GroupList.vue", () => {
     expect(pushMock).toHaveBeenCalledTimes(1);
     expect(pushMock).toHaveBeenCalledWith({
       name: "GroupEdit",
-      params: { groupId: 2 },
+      params: { groupId: 1 },
     });
+  });
+
+  it("MANAGER 그룹에는 '수정'이 없어 GroupEdit로 이동할 수 없다", async () => {
+    const wrapper = mount(GroupList);
+    await flushPromises();
+    await nextTick();
+
+    const managerItem = findGroupItemByName(wrapper, "내가 manager인 그룹");
+    await openActionMenu(managerItem);
+
+    const editBtn = findButton(managerItem, "수정");
+    expect(editBtn).toBeFalsy();
+
+    expect(pushMock).not.toHaveBeenCalled();
   });
 
   it("OWNER는 '탈퇴 불가'로 표시되고 leaveGroup이 호출되지 않는다", async () => {
