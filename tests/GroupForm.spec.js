@@ -12,6 +12,24 @@ function findButtonByText(wrapper, text) {
 }
 
 /**
+ * authStore 모킹
+ * - GroupForm은 "../../data/authStore" 를 import하지만,
+ *   테스트 번들 경로 기준 "../src/data/authStore" 로 매핑됨
+ * - ownerId 필터링을 위해 user.id를 테스트에서 바꿀 수 있게 export
+ */
+vi.mock("../src/data/authStore", () => {
+  const user = { value: { id: 1, name: "현재소유자", nickname: "owner" } };
+
+  return {
+    __esModule: true,
+    useAuthStore: () => ({
+      user,
+    }),
+    user,
+  };
+});
+
+/**
  * memberStore 모킹
  * - GroupForm은 "../../data/memberStore" 를 import하지만,
  *   번들링 경로 기준으로 "../src/data/memberStore" 가 동일 모듈로 매핑됨
@@ -29,6 +47,7 @@ vi.mock("../src/data/memberStore", () => {
 
 // 모킹된 함수/변수 import
 import { members, searchMembers } from "../src/data/memberStore";
+import { user as authUser } from "../src/data/authStore";
 
 const BASE_MEMBERS = [
   { id: 1, name: "김청강", nickname: "cheonggang" },
@@ -41,6 +60,8 @@ describe("GroupForm.vue", () => {
     // 각 테스트마다 초기화
     members.value = [...BASE_MEMBERS];
     searchMembers.mockReset();
+
+    authUser.value = { id: 1, name: "현재소유자", nickname: "owner" };
   });
 
   it("그룹 이름 / 설명 / 공개 범위를 입력 및 선택할 수 있다", async () => {
@@ -114,6 +135,38 @@ describe("GroupForm.vue", () => {
     // 오른쪽 상태 뱃지: 기본은 "추가"
     const statusBadge = first.find("span");
     expect(statusBadge.text()).toContain("추가");
+  });
+
+  it("멤버 검색 결과에서 owner(현재 로그인 사용자)는 노출되지 않는다", async () => {
+    // 현재 로그인 유저를 id=2로 설정
+    authUser.value = { id: 2, name: "이알고", nickname: "algoLee" };
+
+    // 검색 결과에 owner(id=2)를 포함시켜도 UI에는 보이면 안 됨
+    searchMembers.mockResolvedValue([
+      { id: 2, name: "이알고", nickname: "algoLee" }, // owner
+      { id: 3, name: "달피곰", nickname: "baekjoonPark" },
+    ]);
+
+    const wrapper = mount(GroupForm, { props: { mode: "create" } });
+
+    await wrapper
+      .find('input[placeholder="이름 또는 닉네임으로 검색"]')
+      .setValue("알고");
+    const searchButton = findButtonByText(wrapper, "검색");
+    await searchButton.trigger("click");
+    await flushPromises();
+
+    const searchBox = wrapper.findAll("div.border.rounded-xl")[0];
+    const resultItems = searchBox.findAll("li");
+
+    // owner가 빠져서 1개만 남아야 함
+    expect(resultItems.length).toBe(1);
+    expect(searchBox.text()).toContain("달피곰");
+    expect(searchBox.text()).toContain("@baekjoonPark");
+
+    // owner는 검색 결과에 없어야 함
+    expect(searchBox.text()).not.toContain("이알고");
+    expect(searchBox.text()).not.toContain("@algoLee");
   });
 
   it("멤버 검색 결과에서 클릭 시 선택됨/추가 상태와 오른쪽 선택된 멤버 영역이 동기화된다", async () => {
