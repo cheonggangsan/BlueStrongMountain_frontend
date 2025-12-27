@@ -209,7 +209,7 @@ router.beforeEach(async (to, from, next) => {
       return next({ name: "GroupList" });
     }
 
-    // 4-2) owner/manager만 접근 가능한 페이지 (GroupEdit, BoardCreate/Edit)
+    // 4-2) owner/manager만 접근 가능한 페이지 (BoardCreate/Edit)
     if (needGroupManager && !(isOwner || isManager)) {
       window.alert("이 그룹의 관리자 또는 소유자만 접근할 수 있습니다.");
 
