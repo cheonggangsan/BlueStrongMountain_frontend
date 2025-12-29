@@ -2,6 +2,25 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ref, nextTick } from "vue";
 import { mount, flushPromises } from "@vue/test-utils";
 
+// --- feedback mocks -------------------------------------------------
+vi.mock("@/lib/feedback/confirm", () => ({
+  __esModule: true,
+  confirm: vi.fn(),
+}));
+
+vi.mock("@/lib/feedback/toast", () => ({
+  __esModule: true,
+  toast: {
+    success: vi.fn(),
+    info: vi.fn(),
+    warning: vi.fn(),
+    error: vi.fn(),
+    remove: vi.fn(),
+    clear: vi.fn(),
+  },
+  toasts: { value: [] },
+}));
+
 // --- vue-router mock -------------------------------------------------
 const pushMock = vi.fn();
 
