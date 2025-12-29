@@ -4,6 +4,8 @@ import { useRouter, useRoute } from "vue-router";
 import { boards, deleteBoard, fetchBoards } from "../data/boardStore";
 import { useAuthStore } from "../data/authStore";
 import { fetchGroupById } from "../data/groupStore";
+import { toast } from "@/lib/feedback/toast";
+import { confirm } from "@/lib/feedback/confirm";
 
 const router = useRouter();
 const route = useRoute();
@@ -105,23 +107,33 @@ function goGroupList() {
 
 async function handleDelete(id) {
   if (!currentUserId.value) {
-    alert("로그인이 필요합니다.");
+    toast.warning("로그인이 필요합니다.");
     return;
   }
 
-  if (confirm("정말 이 보드를 삭제하시겠습니까?")) {
-    try {
-      await deleteBoard({
-        groupId: Number(route.params.groupId),
-        boardId: id,
-        requesterId: currentUserId.value,
-      });
+  const ok = await confirm({
+    title: "보드 삭제",
+    description: "정말 이 보드를 삭제하시겠습니까?",
+    confirmText: "삭제",
+    cancelText: "취소",
+    variant: "danger",
+  });
+  if (!ok) return;
 
-      await fetchBoards(Number(route.params.groupId));
-    } catch (e) {
-      console.error(e);
-      alert("보드 삭제 중 오류가 발생했습니다: " + e.message);
-    }
+  try {
+    await deleteBoard({
+      groupId: Number(route.params.groupId),
+      boardId: id,
+      requesterId: currentUserId.value,
+    });
+
+    await fetchBoards(Number(route.params.groupId));
+    toast.success("보드를 삭제했습니다.");
+  } catch (e) {
+    console.error(e);
+    toast.error(
+      `보드 삭제 중 오류가 발생했습니다${e?.message ? `: ${e.message}` : "."}`,
+    );
   }
 }
 </script>
