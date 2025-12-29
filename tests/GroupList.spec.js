@@ -63,6 +63,7 @@ import {
   fetchGroups as fetchGroupsMock,
   leaveGroup as leaveGroupMock,
 } from "../src/data/groupStore";
+import { confirm as confirmMock } from "@/lib/feedback/confirm";
 
 // 🔹 그룹 li를 이름으로 찾아주는 헬퍼 (정렬/필터에 의존 X)
 function findGroupItemByName(wrapper, groupName) {
@@ -238,8 +239,7 @@ describe("GroupList.vue", () => {
   });
 
   it("MEMBER 그룹에서 '그룹 탈퇴' 클릭 시 leaveGroup이 호출된다", async () => {
-    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
-    const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => {});
+    confirmMock.mockResolvedValue(true);
 
     const wrapper = mount(GroupList);
     await flushPromises();
@@ -257,11 +257,8 @@ describe("GroupList.vue", () => {
     await flushPromises();
     await nextTick();
 
-    expect(confirmSpy).toHaveBeenCalled();
+    expect(confirmMock).toHaveBeenCalled();
     expect(leaveGroupMock).toHaveBeenCalledWith(3, { requesterId: 1 });
-
-    confirmSpy.mockRestore();
-    alertSpy.mockRestore();
   });
 
   it("그룹 카드를 클릭하면 BoardList로 이동한다", async () => {

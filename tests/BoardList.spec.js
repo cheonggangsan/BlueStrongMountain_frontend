@@ -104,6 +104,7 @@ import {
 } from "@/data/boardStore";
 import { fetchGroupById as fetchGroupByIdMock } from "@/data/groupStore";
 import { useAuthStore } from "@/data/authStore";
+import { confirm as confirmMock } from "@/lib/feedback/confirm";
 
 describe("BoardList.vue", () => {
   beforeEach(() => {
@@ -230,7 +231,7 @@ describe("BoardList.vue", () => {
   });
 
   it("삭제 버튼 클릭 시 confirm 통과하면 deleteBoard와 fetchBoards가 호출된다", async () => {
-    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+    confirmMock.mockResolvedValue(true);
 
     const wrapper = mount(BoardList);
     await flushPromises();
@@ -248,7 +249,7 @@ describe("BoardList.vue", () => {
     await nextTick();
 
     // 1) 동작 검증
-    expect(confirmSpy).toHaveBeenCalled();
+    expect(confirmMock).toHaveBeenCalled();
     expect(deleteBoardMock).toHaveBeenCalledWith({
       groupId: 1,
       boardId: 1,
@@ -261,8 +262,6 @@ describe("BoardList.vue", () => {
 
     // 3) DOM에서도 사라졌는지
     expect(wrapper.text()).not.toContain("알고리즘 스터디 1차");
-
-    confirmSpy.mockRestore();
   });
 
   it("권한이 없는 사용자는 보드 만들기/수정/삭제 버튼을 볼 수 없다", async () => {
