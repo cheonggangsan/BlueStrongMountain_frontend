@@ -9,6 +9,13 @@ import {
   mockChangeGroupOwner,
 } from "@/mocks/group.mock";
 
+import { assertSchema } from "@/lib/schema/assertSchema";
+import {
+  ApiGroupDetailSchema,
+  ApiGroupSummaryListSchema,
+  ApiGroupUserListSchema,
+} from "@/lib/schema/group.schema";
+
 const USE_MOCK_GROUP = apiMode.group === "mock";
 
 const toNumArr = (arr) => (Array.isArray(arr) ? arr.map((v) => Number(v)) : []);
@@ -48,7 +55,11 @@ export const groupService = {
     }
 
     // GroupSummaryResponse[]
-    const list = await groupApi.fetchGroups({ requesterId, name });
+    const list = assertSchema(
+      ApiGroupSummaryListSchema,
+      await groupApi.fetchGroups({ requesterId, name }),
+      "groupApi.fetchGroups",
+    );
 
     // FE에서 쓰기 좋은 형태로 매핑
     return list.map((g) => ({
@@ -144,7 +155,11 @@ export const groupService = {
       );
     }
 
-    const apiGroup = await groupApi.fetchGroupById(groupId, { requesterId });
+    const apiGroup = assertSchema(
+      ApiGroupDetailSchema,
+      await groupApi.fetchGroupById(groupId, { requesterId }),
+      "groupApi.fetchGroupById",
+    );
     return mapGroupDetailFromApi(apiGroup);
   },
 
@@ -190,7 +205,11 @@ export const groupService = {
     if (result && typeof result === "object" && "success" in result) {
       if (!result.success) throw new Error("그룹 수정에 실패했습니다.");
 
-      const updated = await groupApi.fetchGroupById(groupId, { requesterId });
+      const updated = assertSchema(
+        ApiGroupDetailSchema,
+        await groupApi.fetchGroupById(groupId, { requesterId }),
+        "groupApi.fetchGroupById",
+      );
       return mapGroupDetailFromApi(updated);
     }
 
@@ -224,7 +243,11 @@ export const groupService = {
         throw new Error("소유자 변경에 실패했습니다.");
       }
 
-      const updated = await groupApi.fetchGroupById(groupId, { requesterId });
+      const updated = assertSchema(
+        ApiGroupDetailSchema,
+        await groupApi.fetchGroupById(groupId, { requesterId }),
+        "groupApi.fetchGroupById",
+      );
       return mapGroupDetailFromApi(updated);
     }
 
@@ -250,10 +273,14 @@ export const groupService = {
       );
     }
 
-    const list = await groupApi.fetchGroupUsers(groupId, { requesterId });
+    const list = assertSchema(
+      ApiGroupUserListSchema,
+      await groupApi.fetchGroupUsers(groupId, { requesterId }),
+      "groupApi.fetchGroupUsers",
+    );
 
     return (list || []).map((u) => ({
-      id: Number(u.userId),
+      id: Number(u.userId ?? u.id),
       name: u.username,
       nickname: u.username, // email 표시로 UI 개선 가능
       role: u.role, // OWNER | MANAGER | MEMBER

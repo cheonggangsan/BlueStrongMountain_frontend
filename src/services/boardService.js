@@ -9,6 +9,13 @@ import {
 } from "@/mocks/board.mock";
 import { mockGetBoardUserStatus } from "@/mocks/boardUserStatus.mock";
 
+import { assertSchema } from "@/lib/schema/assertSchema";
+import {
+  ApiBoardDetailSchema,
+  ApiBoardProgressSchema,
+  ApiBoardSummaryListSchema,
+} from "@/lib/schema/board.schema";
+
 const USE_MOCK_BOARD = apiMode.board === "mock";
 const USE_MOCK_BOARD_STATUS = apiMode.boardStatus === "mock";
 
@@ -121,7 +128,11 @@ export const boardService = {
       return mockFetchBoards(groupId);
     }
 
-    const apiBoards = await boardApi.fetchBoards(groupId, options);
+    const apiBoards = assertSchema(
+      ApiBoardSummaryListSchema,
+      await boardApi.fetchBoards(groupId, options),
+      "boardApi.fetchBoards",
+    );
     return apiBoards.map((b) => mapBoardSummaryFromApi(b, Number(groupId)));
   },
 
@@ -130,7 +141,11 @@ export const boardService = {
       return mockFetchBoardById(boardId);
     }
 
-    const apiBoard = await boardApi.fetchBoardById(groupId, boardId);
+    const apiBoard = assertSchema(
+      ApiBoardDetailSchema,
+      await boardApi.fetchBoardById(groupId, boardId),
+      "boardApi.fetchBoardById",
+    );
     return mapBoardDetailFromApi(apiBoard);
   },
 
@@ -173,11 +188,15 @@ export const boardService = {
       return mockGetBoardUserStatus(groupId, boardId);
     }
 
-    const apiRes = await boardApi.getBoardUserStatus({
-      groupId,
-      boardId,
-      requesterId,
-    });
+    const apiRes = assertSchema(
+      ApiBoardProgressSchema,
+      await boardApi.getBoardUserStatus({
+        groupId,
+        boardId,
+        requesterId,
+      }),
+      "boardApi.getBoardUserStatus",
+    );
     return mapBoardProgressFromApi(apiRes);
   },
 };

@@ -5,6 +5,12 @@ import {
   searchWithConditions as mockSearchWithConditions,
   postBoard as mockPostBoard,
 } from "@/mocks/problem.mock";
+
+import { assertSchema } from "@/lib/schema/assertSchema";
+import {
+  ApiProblemListSchema,
+  FrontProblemListSchema,
+} from "@/lib/schema/problem.schema";
 import { difficultyOptions } from "@/data/difficultyOptions";
 
 const USE_MOCK_PROBLEM = apiMode.problem === "mock";
@@ -108,8 +114,18 @@ export const problemService = {
    */
   async searchByNumber(problemNo) {
     if (USE_MOCK_PROBLEM) return mockSearchByNumber(problemNo);
-    const list = await problemApi.searchByNumber(problemNo);
-    return Array.isArray(list) ? list.map((p) => normalizeProblem(p)) : [];
+    const list = assertSchema(
+      ApiProblemListSchema,
+      await problemApi.searchByNumber(problemNo),
+      "problemApi.searchByNumber",
+    );
+
+    const normalized = list.map((p) => normalizeProblem(p));
+    return assertSchema(
+      FrontProblemListSchema,
+      normalized,
+      "problemService.normalizeProblem",
+    );
   },
 
   /**
@@ -251,14 +267,23 @@ export const problemService = {
       option: mergedOption,
     });
 
-    const normalized = Array.isArray(rawList)
-      ? rawList.map((p) => normalizeProblem(p))
-      : [];
+    const apiList = assertSchema(
+      ApiProblemListSchema,
+      rawList,
+      "problemApi.filterProblems",
+    );
+
+    const normalized = apiList.map((p) => normalizeProblem(p));
+    const normalizedSafe = assertSchema(
+      FrontProblemListSchema,
+      normalized,
+      "problemService.normalizeProblem",
+    );
 
     const dateLimit = registeredBefore ?? beforeDate;
-    if (!dateLimit) return normalized;
+    if (!dateLimit) return normalizedSafe;
 
-    return normalized.filter(
+    return normalizedSafe.filter(
       (p) => p.registeredAt && p.registeredAt <= dateLimit,
     );
   },
