@@ -3,7 +3,7 @@ import { reactive, readonly } from "vue";
 /**
  * Tiny global confirm dialog state.
  * Use from anywhere:
- *   const ok = await confirm({ title, description })
+ *   const ok = await confirm({ title, description, variant: "danger" })
  */
 
 const _state = reactive({
@@ -13,12 +13,23 @@ const _state = reactive({
   confirmText: "확인",
   cancelText: "취소",
   variant: "default", // default | danger
+
+  // options
+  closeOnBackdrop: true,
+  initialFocus: "confirm", // confirm | cancel
+
   _resolver: null,
 });
 
 export const confirmState = readonly(_state);
 
 export function confirm(options = {}) {
+  if (_state.isOpen && typeof _state._resolver === "function") {
+    _state._resolver(false);
+    _state._resolver = null;
+    _state.isOpen = false;
+  }
+
   return new Promise((resolve) => {
     _state.title = options.title ?? "확인";
     _state.description = options.description ?? "";
