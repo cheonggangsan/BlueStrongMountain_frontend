@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { assertSchema } from "@/lib/schema/assertSchema";
 import { ApiGroupDetailSchema } from "@/lib/schema/group.schema";
+import { ApiSchemaError } from "@/lib/schema/errors";
 
 describe("API contract schemas", () => {
   it("parses GroupDetail with title + ids", () => {
@@ -20,9 +21,23 @@ describe("API contract schemas", () => {
     expect(parsed.ownerId).toBe(1);
   });
 
-  it("throws ApiSchemaError when required fields are missing", () => {
-    expect(() =>
-      assertSchema(ApiGroupDetailSchema, { title: "x" }, "test"),
-    ).toThrowError();
+  it("throws ApiSchemaError with context/issues when required fields are missing", () => {
+    try {
+      assertSchema(
+        ApiGroupDetailSchema,
+        { description: "x" },
+        "group.detail.test",
+      );
+      throw new Error("Expected to throw");
+    } catch (err) {
+      expect(err).toBeInstanceOf(ApiSchemaError);
+      expect(err.code).toBe("API_SCHEMA_INVALID");
+      expect(err.context).toBe("group.detail.test");
+      expect(Array.isArray(err.issues)).toBe(true);
+      expect(err.issues.length).toBeGreaterThan(0);
+      expect(err.issues[0]).toHaveProperty("path");
+      expect(err.issues[0]).toHaveProperty("code");
+      expect(err.issues[0]).toHaveProperty("message");
+    }
   });
 });
