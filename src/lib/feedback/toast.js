@@ -1,7 +1,7 @@
 import { ref, readonly } from "vue";
 
 /**
- * Tiny global toast store (framework-agnostic).
+ * Tiny global toast store (Vue-based).
  * - Works from anywhere (router, services, components)
  * - Keeps UI in <AppToastHost />
  */
