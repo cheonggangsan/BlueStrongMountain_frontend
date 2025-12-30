@@ -41,12 +41,12 @@ export const ApiProblemListSchema = z.array(ApiProblemSchema);
  * Keeping this helps ensure services don't leak inconsistent models.
  */
 export const FrontProblemSchema = z.object({
-  id: Id,
+  id: z.number().int(),
   title: z.string(),
   difficulty: z.string(), // label (e.g., "Gold III" / "Unrated")
   tags: z.array(z.string()),
-  acceptedUserCount: Int,
+  acceptedUserCount: z.number().int(),
   registeredAt: z.string().nullable(),
-  reviewCount: Int.optional(),
+  reviewCount: z.number().int().optional(),
 });
 export const FrontProblemListSchema = z.array(FrontProblemSchema);
