@@ -92,7 +92,10 @@ function normalizeProblem(p) {
     title: p.title ?? p.name ?? "",
     difficulty: difficultyIndexToLabel(p.difficulty),
     tags: Array.isArray(p.tags) ? p.tags : [],
-    acceptedUserCount: p.acceptedUserCount ?? p.accepted_user_count ?? 0,
+    acceptedUserCount: toFiniteInt(
+      p.acceptedUserCount ?? p.accepted_user_count,
+      0,
+    ),
     registeredAt,
     reviewCount, // undefined 가능
   };
