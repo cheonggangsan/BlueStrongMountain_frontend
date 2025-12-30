@@ -135,6 +135,7 @@ describe("BoardList.vue", () => {
     fetchBoardsMock.mockClear();
     pushMock.mockClear();
     fetchGroupByIdMock.mockClear();
+    confirmMock.mockReset();
   });
 
   it("마운트 시 fetchBoards가 groupId와 함께 호출된다", async () => {

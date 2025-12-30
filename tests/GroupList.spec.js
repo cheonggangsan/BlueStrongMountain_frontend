@@ -125,6 +125,7 @@ describe("GroupList.vue", () => {
     fetchGroupsMock.mockImplementation(async () => {});
     leaveGroupMock.mockReset();
     pushMock.mockReset();
+    confirmMock.mockReset();
   });
 
   it("마운트 시 fetchGroups가 호출된다", async () => {
@@ -212,9 +213,6 @@ describe("GroupList.vue", () => {
   });
 
   it("OWNER는 '탈퇴 불가'로 표시되고 leaveGroup이 호출되지 않는다", async () => {
-    const confirmSpy = vi.spyOn(window, "confirm");
-    const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => {});
-
     const wrapper = mount(GroupList);
     await flushPromises();
     await nextTick();
@@ -230,12 +228,8 @@ describe("GroupList.vue", () => {
     // disabled라서 클릭 자체가 안 되는 게 정상
     expect(leaveBtn.element.disabled).toBe(true);
 
-    expect(confirmSpy).not.toHaveBeenCalled();
-    expect(alertSpy).not.toHaveBeenCalled();
+    expect(confirmMock).not.toHaveBeenCalled();
     expect(leaveGroupMock).not.toHaveBeenCalled();
-
-    confirmSpy.mockRestore();
-    alertSpy.mockRestore();
   });
 
   it("MEMBER 그룹에서 '그룹 탈퇴' 클릭 시 leaveGroup이 호출된다", async () => {
