@@ -18,6 +18,8 @@ import BoardDetailView from "../views/BoardDetailView.vue";
 import { fetchGroupById } from "@/data/groupStore";
 import { useAuthStore } from "@/data/authStore";
 
+import { toast } from "@/lib/feedback/toast";
+
 const routes = [
   {
     path: "/",
@@ -166,7 +168,7 @@ router.beforeEach(async (to, from, next) => {
       group = await fetchGroupById(groupId, { requesterId: uid });
     } catch (e) {
       if (e?.response?.status === 401) {
-        window.alert("로그인이 필요합니다.");
+        toast.warning("로그인이 필요합니다.");
 
         return next({
           name: "Login",
@@ -176,12 +178,12 @@ router.beforeEach(async (to, from, next) => {
       }
 
       console.error("[router] fetchGroupById error:", e);
-      window.alert("그룹 정보를 불러올 수 없습니다.");
+      toast.error("그룹 정보를 불러올 수 없습니다.");
       return next({ name: "GroupList" });
     }
 
     if (!group) {
-      window.alert("해당 그룹을 찾을 수 없습니다.");
+      toast.error("해당 그룹을 찾을 수 없습니다.");
       return next({ name: "GroupList" });
     }
 
@@ -199,19 +201,19 @@ router.beforeEach(async (to, from, next) => {
 
     // 4-1) 그룹 멤버만 접근 가능한 페이지 (BoardList, BoardDetail 등)
     if (needGroupMember && !isMember) {
-      window.alert("이 그룹 멤버만 접근할 수 있는 페이지입니다.");
+      toast.warning("이 그룹 멤버만 접근할 수 있는 페이지입니다.");
       return next({ name: "GroupList" });
     }
 
     // 4-1.5) owner만 접근 가능한 페이지 (GroupEdit 등)
     if (needGroupOwner && !isOwner) {
-      window.alert("이 그룹의 소유자만 접근할 수 있습니다.");
+      toast.warning("이 그룹의 소유자만 접근할 수 있습니다.");
       return next({ name: "GroupList" });
     }
 
     // 4-2) owner/manager만 접근 가능한 페이지 (BoardCreate/Edit)
     if (needGroupManager && !(isOwner || isManager)) {
-      window.alert("이 그룹의 관리자 또는 소유자만 접근할 수 있습니다.");
+      toast.warning("이 그룹의 관리자 또는 소유자만 접근할 수 있습니다.");
 
       const isBoardRoute = [
         "BoardList",

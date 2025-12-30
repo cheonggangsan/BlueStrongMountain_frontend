@@ -3,6 +3,8 @@ import { ref, onMounted, onUnmounted, computed, nextTick } from "vue";
 import { useRouter } from "vue-router";
 import { groups, fetchGroups, leaveGroup } from "../../data/groupStore";
 import { useAuthStore } from "../../data/authStore";
+import { toast } from "@/lib/feedback/toast";
+import { confirm } from "@/lib/feedback/confirm";
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -77,7 +79,8 @@ onMounted(async () => {
     console.warn(
       "[GroupList] currentUserId가 없어 그룹 목록을 불러오지 않습니다.",
     );
-    window.alert("로그인이 필요합니다.");
+    toast.warning("로그인이 필요합니다.");
+    router.replace({ name: "Login", query: { redirect: "/groups" } });
     return;
   }
   await fetchGroups({ requesterId: uid });
@@ -146,30 +149,36 @@ async function handleLeaveGroup(groupId) {
   const uid = currentUserId.value;
 
   if (!uid) {
-    window.alert("로그인 정보가 없어 그룹을 탈퇴할 수 없습니다.");
+    toast.error("로그인 정보가 없어 그룹을 탈퇴할 수 없습니다.");
     return;
   }
 
   if (isOwner(target)) {
-    window.alert(
+    toast.info(
       "이 그룹의 소유자는 바로 탈퇴할 수 없습니다.\n" +
         "그룹 수정 > 소유자 변경에서 소유권을 다른 멤버에게 넘긴 뒤 탈퇴해 주세요.",
     );
     return;
   }
 
-  const ok = window.confirm(
-    `정말 '${name}' 그룹에서 탈퇴하시겠습니까?\n` +
+  const ok = await confirm({
+    title: "그룹 탈퇴",
+    description:
+      `정말 '${name}' 그룹에서 탈퇴하시겠습니까?\n` +
       "탈퇴해도 기존에 풀었던 문제 기록은 유지되지만, 이 그룹의 보드에는 더 이상 접근할 수 없습니다.",
-  );
+    confirmText: "탈퇴",
+    cancelText: "취소",
+    variant: "danger",
+  });
   if (!ok) return;
 
   try {
     leavingGroupId.value = groupId;
     await leaveGroup(groupId, { requesterId: uid });
+    toast.success("그룹에서 탈퇴했습니다.");
   } catch (e) {
     console.error(e);
-    alert("그룹 탈퇴 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+    toast.error("그룹 탈퇴 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
   } finally {
     leavingGroupId.value = null;
   }

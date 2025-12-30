@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed } from "vue";
 import { difficultyOptions } from "@/data/difficultyOptions";
+import { confirm } from "@/lib/feedback/confirm";
 
 const props = defineProps({
   problems: {
@@ -28,9 +29,15 @@ function handleDrop(index) {
   draggingIndex.value = null;
 }
 
-function handleClearAll() {
+async function handleClearAll() {
   if (!props.problems.length) return;
-  const ok = window.confirm("선택된 문제를 모두 삭제할까요?");
+  const ok = await confirm({
+    title: "전체 삭제",
+    description: "선택된 문제를 모두 삭제할까요?",
+    confirmText: "삭제",
+    cancelText: "취소",
+    variant: "danger",
+  });
   if (!ok) return;
   emit("clear-all");
 }
