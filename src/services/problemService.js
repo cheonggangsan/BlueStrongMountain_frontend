@@ -64,6 +64,11 @@ function toFiniteNumber(v) {
   return Number.isFinite(n) ? n : undefined;
 }
 
+function toFiniteInt(v, fallback = undefined) {
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.trunc(n) : fallback;
+}
+
 /**
  * 서버/목 스펙이 달라도 UI가 쓰는 공통 모델로 정규화
  * UI에서 사용하는 필드:
@@ -83,7 +88,7 @@ function normalizeProblem(p) {
   );
 
   return {
-    id: p.id ?? p.problemId,
+    id: toFiniteInt(p.id ?? p.problemId, 0),
     title: p.title ?? p.name ?? "",
     difficulty: difficultyIndexToLabel(p.difficulty),
     tags: Array.isArray(p.tags) ? p.tags : [],
