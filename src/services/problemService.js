@@ -107,6 +107,17 @@ function getRandomSubset(arr, count) {
   return copy.slice(0, count);
 }
 
+function assertSchemaDev(schema, data, context) {
+  const isDev =
+    typeof import.meta !== "undefined" &&
+    import.meta.env &&
+    (import.meta.env.DEV ||
+      import.meta.env.MODE === "test" ||
+      import.meta.env.MODE === "development");
+
+  return isDev ? assertSchema(schema, data, context) : data;
+}
+
 export const problemService = {
   /**
    * 문제 번호로 검색 (mock/real 공통 인터페이스)
@@ -120,8 +131,14 @@ export const problemService = {
       "problemApi.searchByNumber",
     );
 
+    // 1) raw api response validate (always)
+    // 2) normalized frontend model validate (DEV/TEST only)
+    //
+    // Why double validation?
+    // - Catch backend contract drift early (API schema)
+    // - Catch internal mapping regression (frontend schema) without shipping runtime overhead to prod
     const normalized = list.map((p) => normalizeProblem(p));
-    return assertSchema(
+    return assertSchemaDev(
       FrontProblemListSchema,
       normalized,
       "problemService.normalizeProblem",
@@ -273,8 +290,14 @@ export const problemService = {
       "problemApi.filterProblems",
     );
 
+    // 1) raw api response validate (always)
+    // 2) normalized frontend model validate (DEV/TEST only)
+    //
+    // Why double validation?
+    // - Catch backend contract drift early (API schema)
+    // - Catch internal mapping regression (frontend schema) without shipping runtime overhead to prod
     const normalized = apiList.map((p) => normalizeProblem(p));
-    const normalizedSafe = assertSchema(
+    const normalizedSafe = assertSchemaDev(
       FrontProblemListSchema,
       normalized,
       "problemService.normalizeProblem",
