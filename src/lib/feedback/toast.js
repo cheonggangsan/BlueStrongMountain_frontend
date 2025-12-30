@@ -45,13 +45,12 @@ function push(type, message, options = {}) {
   if (_toasts.value.length > MAX_TOASTS) {
     const overflow = _toasts.value.length - MAX_TOASTS;
     const dropIds = _toasts.value.slice(0, overflow).map((t) => t.id);
-    dropIds.forEach((dropId) => remove(dropId));
+    dropIds.forEach(clearTimer);
     _toasts.value = _toasts.value.slice(-MAX_TOASTS);
   }
 
   if (duration > 0) {
     const timeoutId = window.setTimeout(() => {
-      _timeouts.delete(id);
       remove(id);
     }, duration);
     _timeouts.set(id, timeoutId);
