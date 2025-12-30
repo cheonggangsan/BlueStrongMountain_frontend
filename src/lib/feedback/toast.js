@@ -7,9 +7,20 @@ import { ref, readonly } from "vue";
  */
 
 const _toasts = ref([]);
+const _timeouts = new Map();
+const MAX_TOASTS = 5;
 let _seq = 1;
 
+function clearTimer(id) {
+  const tid = _timeouts.get(id);
+  if (tid) {
+    clearTimeout(tid);
+    _timeouts.delete(id);
+  }
+}
+
 function remove(id) {
+  clearTimer(id);
   _toasts.value = _toasts.value.filter((t) => t.id !== id);
 }
 
@@ -31,8 +42,19 @@ function push(type, message, options = {}) {
 
   _toasts.value = [..._toasts.value, toast];
 
+  if (_toasts.value.length > MAX_TOASTS) {
+    const overflow = _toasts.value.length - MAX_TOASTS;
+    const dropIds = _toasts.value.slice(0, overflow).map((t) => t.id);
+    dropIds.forEach((dropId) => remove(dropId));
+    _toasts.value = _toasts.value.slice(-MAX_TOASTS);
+  }
+
   if (duration > 0) {
-    window.setTimeout(() => remove(id), duration);
+    const timeoutId = window.setTimeout(() => {
+      _timeouts.delete(id);
+      remove(id);
+    }, duration);
+    _timeouts.set(id, timeoutId);
   }
 
   return id;
@@ -45,6 +67,7 @@ export const toast = {
   error: (message, options) => push("error", message, options),
   remove,
   clear: () => {
+    Array.from(_timeouts.keys()).forEach((id) => clearTimer(id));
     _toasts.value = [];
   },
 };
