@@ -6,7 +6,7 @@ import {
   postBoard as mockPostBoard,
 } from "@/mocks/problem.mock";
 
-import { assertSchema } from "@/lib/schema/assertSchema";
+import { assertSchema, isDevEnv } from "@/lib/schema/assertSchema";
 import {
   ApiProblemListSchema,
   FrontProblemListSchema,
@@ -108,14 +108,7 @@ function getRandomSubset(arr, count) {
 }
 
 function assertSchemaDev(schema, data, context) {
-  const isDev =
-    typeof import.meta !== "undefined" &&
-    import.meta.env &&
-    (import.meta.env.DEV ||
-      import.meta.env.MODE === "test" ||
-      import.meta.env.MODE === "development");
-
-  return isDev ? assertSchema(schema, data, context) : data;
+  return isDevEnv() ? assertSchema(schema, data, context) : data;
 }
 
 export const problemService = {

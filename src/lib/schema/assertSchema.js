@@ -1,6 +1,19 @@
 import { ApiSchemaError } from "./errors";
 
 /**
+ * DEV/TEST 환경 판별 (Vite/Vitest 기준)
+ */
+export function isDevEnv() {
+  return (
+    typeof import.meta !== "undefined" &&
+    import.meta.env &&
+    (import.meta.env.DEV ||
+      import.meta.env.MODE === "test" ||
+      import.meta.env.MODE === "development")
+  );
+}
+
+/**
  * Validate an API response at the service boundary.
  * - Throws ApiSchemaError on mismatch (fast-fail).
  * - Logs details in DEV for debugging.
@@ -22,12 +35,7 @@ export function assertSchema(schema, data, context) {
   }));
 
   // Avoid crashing if import.meta is not available (unit tests / non-vite env)
-  const isDev =
-    typeof import.meta !== "undefined" &&
-    import.meta.env &&
-    (import.meta.env.DEV || import.meta.env.MODE === "development");
-
-  if (isDev) {
+  if (isDevEnv()) {
     // eslint-disable-next-line no-console
     console.error("[API_SCHEMA_INVALID]", { context, issues, data });
   }
