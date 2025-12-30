@@ -67,9 +67,10 @@ export const ApiGroupUserSchema = z
     role: z.string().optional(),
   })
   .passthrough()
-  .refine(requireOneOf(["userId", "id"]), {
+  .transform((u) => ({ ...u, userId: u.userId ?? u.id }))
+  .refine((u) => u.userId != null, {
     message: "User must have id",
-    path: ["id"],
+    path: ["userId"],
   });
 
 export const ApiGroupUserListSchema = z.array(ApiGroupUserSchema);
