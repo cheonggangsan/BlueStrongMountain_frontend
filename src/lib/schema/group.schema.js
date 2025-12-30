@@ -1,4 +1,11 @@
-import { z, Id, Int, Visibility, requireOneOf, DateTimeString } from "./primitives";
+import {
+  z,
+  Id,
+  Int,
+  Visibility,
+  requireOneOf,
+  DateTimeString,
+} from "./primitives";
 
 /**
  * Group summary returned from GET /groups
@@ -42,7 +49,7 @@ export const ApiGroupDetailSchema = z
     updatedAt: DateTimeString.optional(),
   })
   .passthrough()
-  .refine(requireOneOf(["title", "name"], "Group must have title or name"), {
+  .refine(requireOneOf(["title", "name"]), {
     message: "Group must have title or name",
     path: ["title"],
   });
@@ -60,13 +67,9 @@ export const ApiGroupUserSchema = z
     role: z.string().optional(),
   })
   .passthrough()
-  .refine(requireOneOf(["userId", "id"], "User must have id"), {
+  .refine(requireOneOf(["userId", "id"]), {
     message: "User must have id",
     path: ["id"],
-  })
-  .transform((u) => ({
-    ...u,
-    userId: u.userId ?? u.id,
-  }));
+  });
 
 export const ApiGroupUserListSchema = z.array(ApiGroupUserSchema);

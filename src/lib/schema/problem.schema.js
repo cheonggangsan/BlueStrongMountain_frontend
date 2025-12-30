@@ -29,7 +29,7 @@ export const ApiProblemSchema = z
     reviewCnt: Int.optional(),
   })
   .passthrough()
-  .refine(requireOneOf(["id", "problemId"], "Problem must have id"), {
+  .refine(requireOneOf(["id", "problemId"]), {
     message: "Problem must have id",
     path: ["id"],
   });
