@@ -5,6 +5,12 @@ import {
   searchWithConditions as mockSearchWithConditions,
   postBoard as mockPostBoard,
 } from "@/mocks/problem.mock";
+
+import { assertSchema, isDevEnv } from "@/lib/schema/assertSchema";
+import {
+  ApiProblemListSchema,
+  FrontProblemListSchema,
+} from "@/lib/schema/problem.schema";
 import { difficultyOptions } from "@/data/difficultyOptions";
 
 const USE_MOCK_PROBLEM = apiMode.problem === "mock";
@@ -58,6 +64,11 @@ function toFiniteNumber(v) {
   return Number.isFinite(n) ? n : undefined;
 }
 
+function toFiniteInt(v, fallback = undefined) {
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.trunc(n) : fallback;
+}
+
 /**
  * 서버/목 스펙이 달라도 UI가 쓰는 공통 모델로 정규화
  * UI에서 사용하는 필드:
@@ -77,11 +88,14 @@ function normalizeProblem(p) {
   );
 
   return {
-    id: p.id ?? p.problemId,
+    id: toFiniteInt(p.id ?? p.problemId, 0),
     title: p.title ?? p.name ?? "",
     difficulty: difficultyIndexToLabel(p.difficulty),
     tags: Array.isArray(p.tags) ? p.tags : [],
-    acceptedUserCount: p.acceptedUserCount ?? p.accepted_user_count ?? 0,
+    acceptedUserCount: toFiniteInt(
+      p.acceptedUserCount ?? p.accepted_user_count,
+      0,
+    ),
     registeredAt,
     reviewCount, // undefined 가능
   };
@@ -101,6 +115,10 @@ function getRandomSubset(arr, count) {
   return copy.slice(0, count);
 }
 
+function assertSchemaDev(schema, data, context) {
+  return isDevEnv() ? assertSchema(schema, data, context) : data;
+}
+
 export const problemService = {
   /**
    * 문제 번호로 검색 (mock/real 공통 인터페이스)
@@ -108,8 +126,24 @@ export const problemService = {
    */
   async searchByNumber(problemNo) {
     if (USE_MOCK_PROBLEM) return mockSearchByNumber(problemNo);
-    const list = await problemApi.searchByNumber(problemNo);
-    return Array.isArray(list) ? list.map((p) => normalizeProblem(p)) : [];
+    const list = assertSchema(
+      ApiProblemListSchema,
+      await problemApi.searchByNumber(problemNo),
+      "problemApi.searchByNumber",
+    );
+
+    // 1) raw api response validate (always)
+    // 2) normalized frontend model validate (DEV/TEST only)
+    //
+    // Why double validation?
+    // - Catch backend contract drift early (API schema)
+    // - Catch internal mapping regression (frontend schema) without shipping runtime overhead to prod
+    const normalized = list.map((p) => normalizeProblem(p));
+    return assertSchemaDev(
+      FrontProblemListSchema,
+      normalized,
+      "problemService.normalizeProblem",
+    );
   },
 
   /**
@@ -251,14 +285,29 @@ export const problemService = {
       option: mergedOption,
     });
 
-    const normalized = Array.isArray(rawList)
-      ? rawList.map((p) => normalizeProblem(p))
-      : [];
+    const apiList = assertSchema(
+      ApiProblemListSchema,
+      rawList,
+      "problemApi.filterProblems",
+    );
+
+    // 1) raw api response validate (always)
+    // 2) normalized frontend model validate (DEV/TEST only)
+    //
+    // Why double validation?
+    // - Catch backend contract drift early (API schema)
+    // - Catch internal mapping regression (frontend schema) without shipping runtime overhead to prod
+    const normalized = apiList.map((p) => normalizeProblem(p));
+    const normalizedSafe = assertSchemaDev(
+      FrontProblemListSchema,
+      normalized,
+      "problemService.normalizeProblem",
+    );
 
     const dateLimit = registeredBefore ?? beforeDate;
-    if (!dateLimit) return normalized;
+    if (!dateLimit) return normalizedSafe;
 
-    return normalized.filter(
+    return normalizedSafe.filter(
       (p) => p.registeredAt && p.registeredAt <= dateLimit,
     );
   },
