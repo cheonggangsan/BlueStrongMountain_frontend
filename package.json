@@ -11,6 +11,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@tanstack/vue-query": "^5.92.5",
     "axios": "^1.13.2",
     "flowbite": "^2.5.2",
     "flowbite-vue": "^0.2.2",
