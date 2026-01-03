@@ -1,5 +1,6 @@
 import { reactive, computed, readonly } from "vue";
 import { authService } from "@/services/authService";
+import { queryClient } from "@/lib/query/queryClient";
 import { USER_STORAGE_KEY, LOGOUT_EVENT } from "../constants/auth";
 
 const state = reactive({
@@ -114,6 +115,12 @@ async function logout() {
   } catch (err) {
     console.error("[authStore] logout error:", err);
   } finally {
+    try {
+      queryClient.clear();
+    } catch (err) {
+      console.warn("[authStore] queryClient.clear failed:", err);
+    }
+
     clearUser();
     state.initialized = true;
     state.isLoading = false;

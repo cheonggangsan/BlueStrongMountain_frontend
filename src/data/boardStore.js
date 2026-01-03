@@ -1,5 +1,7 @@
 import { ref } from "vue";
 import { boardService } from "../services/boardService";
+import { queryClient } from "@/lib/query/queryClient";
+import { boardKeys } from "@/lib/query/queryKeys";
 
 export const boards = ref([]);
 
@@ -7,7 +9,11 @@ export const boards = ref([]);
  * 그룹 ID에 해당하는 보드 목록을 가져옵니다.
  */
 export async function fetchBoards(groupId) {
-  const list = await boardService.fetchBoards(groupId);
+  const list = await queryClient.fetchQuery({
+    queryKey: boardKeys.list(groupId),
+    queryFn: () => boardService.fetchBoards(groupId),
+  });
+
   boards.value = [...list];
   return boards.value;
 }
@@ -25,6 +31,12 @@ export async function fetchBoards(groupId) {
  */
 export async function addBoard(board) {
   await boardService.createBoard(board);
+
+  if (board?.groupId) {
+    queryClient.invalidateQueries({ queryKey: boardKeys.list(board.groupId) });
+  } else {
+    queryClient.invalidateQueries({ queryKey: boardKeys.all });
+  }
 }
 
 /**
@@ -40,6 +52,9 @@ export async function deleteBoard({ groupId, boardId, requesterId }) {
 
   const numericId = Number(boardId);
   boards.value = boards.value.filter((b) => b.id !== numericId);
+
+  queryClient.invalidateQueries({ queryKey: boardKeys.list(groupId) });
+  queryClient.removeQueries({ queryKey: boardKeys.detail(groupId, numericId) });
 }
 
 /**
@@ -66,6 +81,17 @@ export async function updateBoard(board) {
       ...board,
     });
   }
+
+  if (board?.groupId) {
+    queryClient.invalidateQueries({ queryKey: boardKeys.list(board.groupId) });
+  } else {
+    queryClient.invalidateQueries({ queryKey: boardKeys.all });
+  }
+  if (board?.groupId && board?.id) {
+    queryClient.invalidateQueries({
+      queryKey: boardKeys.detail(board.groupId, board.id),
+    });
+  }
 }
 
 /**
@@ -75,7 +101,10 @@ export async function updateBoard(board) {
  *  - boardId: number
  */
 export async function fetchBoardById(groupId, boardId) {
-  return boardService.fetchBoardById(groupId, boardId);
+  return queryClient.fetchQuery({
+    queryKey: boardKeys.detail(groupId, boardId),
+    queryFn: () => boardService.fetchBoardById(groupId, boardId),
+  });
 }
 
 /**
@@ -86,5 +115,9 @@ export async function fetchBoardById(groupId, boardId) {
  *  - requesterId: number
  */
 export async function getBoardUserStatus({ groupId, boardId, requesterId }) {
-  return boardService.getBoardUserStatus({ groupId, boardId, requesterId });
+  return queryClient.fetchQuery({
+    queryKey: boardKeys.userStatus(groupId, boardId, requesterId),
+    queryFn: () =>
+      boardService.getBoardUserStatus({ groupId, boardId, requesterId }),
+  });
 }
